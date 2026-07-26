@@ -21,6 +21,8 @@ jobs:
         run: |
           atlas --version
           tmp=$(mktemp -d)
+          # Seed a README so `atlas import` + cache-readme eval have something to index
+          printf '%s\n' '# Demo' '' 'CI smoke project for atlas-memory.' > "$tmp/README.md"
           atlas init -C "$tmp"
           atlas status -C "$tmp"
           atlas doctor -C "$tmp" || true
@@ -30,3 +32,5 @@ jobs:
           atlas route "demo" -C "$tmp" >/dev/null
           atlas eval -C "$tmp" --cases "$GITHUB_WORKSPACE/eval/cases"
           echo 'mempalace-index then project-cache' | atlas eval --transcript - -C "$tmp"
+          # Also verify eval against this repo (has real README)
+          atlas eval -C "$GITHUB_WORKSPACE" --cases "$GITHUB_WORKSPACE/eval/cases"
