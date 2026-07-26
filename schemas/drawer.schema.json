@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://atlas-memory.dev/schemas/drawer.schema.json",
+  "title": "Atlas MemPalace Drawer",
+  "type": "object",
+  "required": ["type", "status", "summary"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["decision", "lesson", "preference", "bugfix", "build"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "superseded", "archived"]
+    },
+    "summary": { "type": "string", "minLength": 1 },
+    "why": { "type": "string" },
+    "git": {
+      "type": "object",
+      "properties": {
+        "branch": { "type": "string" },
+        "commit": { "type": "string" },
+        "pr": { "type": "string" }
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "supersedes": { "type": ["string", "null"] },
+    "wing": { "type": ["string", "null"] },
+    "room": {
+      "type": ["string", "null"],
+      "enum": ["architecture", "debugging", "conventions", "build", "general", null]
+    }
+  },
+  "additionalProperties": true
+}

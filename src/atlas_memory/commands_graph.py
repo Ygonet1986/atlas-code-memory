@@ -1,0 +1,74 @@
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+from .commands_stale import parse_graphify_index
+
+
+INDEX_HEADER = """# Graphify Index
+
+Camada 3 do **Atlas**. Meta-mapa dos grafos escopados.
+**Não** é AI Mind Map. Consulta por busca; nunca ler inteiro.
+Statuses: `ready` | `missing` | `stale` — use `atlas stale`.
+
+## Escopos
+
+"""
+
+
+def _index_path(project: Path) -> Path:
+    return project / ".cursor" / "graphify-index.md"
+
+
+def list_graphs(project: Path) -> list[dict[str, str]]:
+    path = _index_path(project)
+    if not path.exists():
+        return []
+    return parse_graphify_index(path.read_text(encoding="utf-8", errors="replace"))
+
+
+def add_graph(project: Path, name: str, escopo: str, descricao: str = "", status: str = "missing") -> str:
+    project = project.resolve()
+    path = _index_path(project)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        path.write_text(INDEX_HEADER, encoding="utf-8")
+    entries = list_graphs(project)
+    if any(e["name"] == name for e in entries):
+        return f"exists {name}"
+    escopo = escopo.strip().rstrip("/")
+    grafo = f"{escopo}/graphify-out/"
+    block = "\n".join(
+        [
+            f"### {name}",
+            f"- **escopo:** `{escopo}`",
+            f"- **grafo:** `{grafo}`",
+            f"- **descrição:** {descricao or name}",
+            f"- **status:** {status}",
+            "",
+        ]
+    )
+    text = path.read_text(encoding="utf-8")
+    if "_Nenhum Graphify registrado ainda._" in text:
+        text = text.replace("_Nenhum Graphify registrado ainda._", block)
+    else:
+        text = text.rstrip() + "\n\n" + block
+    path.write_text(text + "\n", encoding="utf-8")
+    return f"added {name}"
+
+
+def set_graph_status(project: Path, name: str, status: str) -> str:
+    if status not in {"ready", "missing", "stale"}:
+        raise ValueError("status must be ready|missing|stale")
+    path = _index_path(project)
+    if not path.exists():
+        raise FileNotFoundError(path)
+    text = path.read_text(encoding="utf-8")
+    pattern = rf"(### {re.escape(name)}\n.*?\n- \*\*status:\*\* )\w+"
+    new_text, n = re.subn(pattern, rf"\g<1>{status}", text, count=1, flags=re.S)
+    if not n:
+        raise KeyError(f"graph entry not found: {name}")
+    path.write_text(new_text, encoding="utf-8")
+    # If ready, ensure graph dir exists hint
+    return f"{name} -> {status}"

@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "atlas-memory"
+version = "0.2.0"
+description = "Atlas — memory router for AI coding agents (Cursor and friends)"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Atlas Memory contributors" }]
+keywords = ["cursor", "ai", "memory", "coding-agent", "mempalace", "graphify", "mcp"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "build>=1.2", "twine>=5.0"]
+
+[project.scripts]
+atlas = "atlas_memory.cli:main"
+atlas-mcp = "atlas_memory.mcp_server:main"
+
+[project.urls]
+Homepage = "https://github.com/atlas-memory/atlas-memory"
+Documentation = "https://github.com/atlas-memory/atlas-memory#readme"
+Issues = "https://github.com/atlas-memory/atlas-memory/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/atlas_memory"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"templates" = "atlas_memory/data/templates"
+"cursor" = "atlas_memory/data/cursor"
+"schemas" = "atlas_memory/data/schemas"
+"adapters" = "atlas_memory/data/adapters"
+"hooks" = "atlas_memory/data/hooks"
+"eval" = "atlas_memory/data/eval"
+"integrations" = "atlas_memory/data/integrations"
+".atlasignore.example" = "atlas_memory/data/.atlasignore.example"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

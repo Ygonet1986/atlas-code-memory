@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "atlas-memory": {
+      "command": "atlas-mcp"
+    }
+  }
+}

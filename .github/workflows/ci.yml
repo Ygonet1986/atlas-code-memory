@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Unit tests
+        run: pytest -q
+      - name: CLI smoke
+        run: |
+          atlas --version
+          tmp=$(mktemp -d)
+          atlas init -C "$tmp"
+          atlas status -C "$tmp"
+          atlas doctor -C "$tmp" || true
+          printf '%s\n' '[type:decision] [status:active]' 'summary: test' 'why: ci' 'branch: -' 'commit: -' 'pr: -' 'files: -' | atlas checkpoint - -C "$tmp"
+          atlas import -C "$tmp"
+          atlas graph add demo --escopo src -C "$tmp"
+          atlas route "demo" -C "$tmp" >/dev/null
+          atlas eval -C "$tmp" --cases "$GITHUB_WORKSPACE/eval/cases"
+          echo 'mempalace-index then project-cache' | atlas eval --transcript - -C "$tmp"

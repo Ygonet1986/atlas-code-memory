@@ -1,0 +1,6 @@
+{
+  "id": "cache-readme",
+  "question": "Where is the project README?",
+  "expect_layer": "cache",
+  "expect_contains": ["README.md"]
+}

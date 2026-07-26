@@ -1,0 +1,6 @@
+{
+  "id": "mempalace-wing",
+  "question": "Which MemPalace wing does this project use?",
+  "expect_layer": "mempalace",
+  "expect_contains": ["wing"]
+}

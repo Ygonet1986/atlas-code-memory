@@ -1,0 +1,6 @@
+{
+  "id": "graph-index-format",
+  "question": "Is there a place to register scoped code graphs?",
+  "expect_layer": "graphify",
+  "expect_contains": ["escopo"]
+}

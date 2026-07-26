@@ -1,0 +1,40 @@
+---
+description: Atlas obrigatório — memory router for AI coding agents
+alwaysApply: true
+---
+
+# Atlas
+
+Mandatory memory router. **One query order.** Never run AI Mind Map alongside Graphify.
+
+## Order
+
+1. **mempalace-index** → wing/room (search; never read whole file)
+2. **MemPalace** (if installed) → scoped recall/write
+3. **graphify-index** → scoped graph
+4. **Graphify *or* Mind Map** → code relations (one only)
+5. **project-cache** → real file
+
+Missing layer → skip. Never invent memory hits.
+
+## Bootstrap
+
+`atlas init` · `atlas doctor` · `atlas import`
+
+## Write / checkpoint
+
+Drawer types: `decision` | `lesson` | `preference` | `bugfix` | `build`  
+Rooms: `architecture` | `debugging` | `conventions` | `build` | `general`  
+Include git fields when known. **No secrets.**  
+Palace vs code conflict: **code wins** → mark `superseded`.  
+After a feature/bugfix: one checkpoint drawer (`atlas checkpoint` to validate).
+
+## Stale
+
+`atlas stale` · git hook may set `status: stale` · update graph then set `ready`.
+
+## Wake
+
+Session start: wing from index + small hot set only — no palace dump.
+
+Details: skill `atlas` + `reference.md`.

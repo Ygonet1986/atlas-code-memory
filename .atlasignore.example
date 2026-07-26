@@ -1,0 +1,19 @@
+# Atlas ignore — paths never indexed into project-cache / import
+# Glob-like prefixes (one per line)
+
+node_modules/
+.git/
+dist/
+build/
+.venv/
+__pycache__/
+.coverage
+coverage/
+.next/
+vendor/
+*.pem
+*.key
+.env
+.env.*
+**/credentials.json
+**/service-account.json

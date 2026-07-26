@@ -1,0 +1,9 @@
+{
+  "name": "atlas-memory",
+  "version": "0.1.0",
+  "description": "Atlas Memory — router for AI coding-agent memory stacks",
+  "author": "Atlas Memory contributors",
+  "license": "MIT",
+  "skills": ["./cursor/skills/atlas"],
+  "rules": ["./cursor/rules/atlas.mdc"]
+}
