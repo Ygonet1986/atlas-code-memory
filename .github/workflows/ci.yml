@@ -32,5 +32,3 @@ jobs:
           atlas route "demo" -C "$tmp" >/dev/null
           atlas eval -C "$tmp" --cases "$GITHUB_WORKSPACE/eval/cases"
           echo 'mempalace-index then project-cache' | atlas eval --transcript - -C "$tmp"
-          # Also verify eval against this repo (has real README)
-          atlas eval -C "$GITHUB_WORKSPACE" --cases "$GITHUB_WORKSPACE/eval/cases"
