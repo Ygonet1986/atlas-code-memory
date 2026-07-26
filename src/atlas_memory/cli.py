@@ -188,7 +188,7 @@ def cmd_graph(args: argparse.Namespace) -> int:
             print(f"{e['name']}\t{e['status']}\t{e['escopo']}")
         return 0
     if args.graph_cmd == "add":
-        print(add_graph(root, args.name, args.escopo, args.description or "", args.status))
+        print(add_graph(root, args.name, args.escopo, getattr(args, "description", "") or "", args.status))
         metrics.record(root, "graph_add", name=args.name)
         return 0
     if args.graph_cmd == "ready":
@@ -309,8 +309,8 @@ def build_parser() -> argparse.ArgumentParser:
     g = gs.add_parser("add")
     add_project(g)
     g.add_argument("name")
-    g.add_argument("--escopo", required=True)
-    g.add_argument("--description", default="")
+    g.add_argument("--escopo", "--scope", dest="escopo", required=True)
+    g.add_argument("--description", "--descricao", dest="description", default="")
     g.add_argument("--status", default="missing", choices=["ready", "missing", "stale"])
     g.set_defaults(func=cmd_graph)
     g = gs.add_parser("ready")

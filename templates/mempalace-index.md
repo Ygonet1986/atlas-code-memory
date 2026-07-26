@@ -1,22 +1,22 @@
 # MemPalace Index
 
-Camada 1 do **Atlas**. Meta-mapa wing/room deste projeto.
-Consulta por busca; nunca ler o arquivo inteiro.
+Atlas layer 1. Map of wings/rooms for this project.
+Search this file; never read it end-to-end.
 
-## Como usar
+## How to use
 
-1. Buscar wing/room.
-2. Recall/write no MemPalace scoped.
-3. Novo tema → novo room aqui + no palace.
+1. Find the wing/room.
+2. Recall/write in MemPalace scoped to that wing/room.
+3. New recurring topic → add a room here and in the palace.
 
-## Formato
+## Format
 
 ```markdown
-### <nome>
+### <name>
 - **wing:** `<id>`
 - **room:** `<architecture|debugging|conventions|build|general>`
 - **workspace:** `<path>`
-- **descrição:** <1–3 frases>
+- **description:** <1–3 sentences>
 - **status:** active | archived
 ```
 

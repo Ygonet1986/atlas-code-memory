@@ -1,27 +1,27 @@
 # Graphify Index
 
-Camada 3 do **Atlas**. Meta-mapa dos grafos escopados.
-**Não** é AI Mind Map. Consulta por busca; nunca ler inteiro.
+Atlas layer 3. Map of scoped code graphs.
+**Not** AI Mind Map. Search this file; never read it end-to-end.
 Statuses: `ready` | `missing` | `stale` — use `atlas stale`.
 
-## Como usar
+## How to use
 
-1. Buscar escopo.
-2. Se `ready` → query no grafo daquele escopo.
-3. Se `stale`/`missing` → atualizar/criar, depois este índice.
+1. Find the scope.
+2. If `ready` → query that graph.
+3. If `stale`/`missing` → update/create, then this index.
 
-## Formato
+## Format
 
 ```markdown
-### <nome-curto>
-- **escopo:** `<caminho/relativo>`
-- **grafo:** `<caminho>/graphify-out/`
-- **descrição:** <1–3 frases>
+### <short-name>
+- **scope:** `<relative/path>`
+- **graph:** `<path>/graphify-out/`
+- **description:** <1–3 sentences>
 - **status:** ready | missing | stale
 ```
 
-## Escopos
+## Scopes
 
-<!-- Um escopo = um grafo. Evite graphify na raiz de monorepos enormes. -->
+<!-- One scope = one graph. Avoid graphifying the root of huge monorepos. -->
 
-_Nenhum Graphify registrado ainda._
+_No Graphify scopes registered yet._

@@ -8,11 +8,11 @@ from .commands_stale import parse_graphify_index
 
 INDEX_HEADER = """# Graphify Index
 
-Camada 3 do **Atlas**. Meta-mapa dos grafos escopados.
-**Não** é AI Mind Map. Consulta por busca; nunca ler inteiro.
+Atlas layer 3. Map of scoped code graphs.
+**Not** AI Mind Map. Search this file; never read it end-to-end.
 Statuses: `ready` | `missing` | `stale` — use `atlas stale`.
 
-## Escopos
+## Scopes
 
 """
 
@@ -42,16 +42,18 @@ def add_graph(project: Path, name: str, escopo: str, descricao: str = "", status
     block = "\n".join(
         [
             f"### {name}",
-            f"- **escopo:** `{escopo}`",
-            f"- **grafo:** `{grafo}`",
-            f"- **descrição:** {descricao or name}",
+            f"- **scope:** `{escopo}`",
+            f"- **graph:** `{grafo}`",
+            f"- **description:** {descricao or name}",
             f"- **status:** {status}",
             "",
         ]
     )
     text = path.read_text(encoding="utf-8")
-    if "_Nenhum Graphify registrado ainda._" in text:
-        text = text.replace("_Nenhum Graphify registrado ainda._", block)
+    if "_No Graphify scopes registered yet._" in text or "_Nenhum Graphify registrado ainda._" in text:
+        text = text.replace("_No Graphify scopes registered yet._", block).replace(
+            "_Nenhum Graphify registrado ainda._", block
+        )
     else:
         text = text.rstrip() + "\n\n" + block
     path.write_text(text + "\n", encoding="utf-8")

@@ -1,6 +1,6 @@
 # Project Source Cache
 
-Camada 5 do **Atlas**. Inventário arquivo → endereço → descrição.
-Consulta por busca; nunca ler inteiro. Atualização parcial após cada mudança.
+Atlas layer 5. File inventory: name → path → description.
+Search this file; never read it end-to-end. Partial updates only after each change.
 
-<!-- atlas import e o agente acrescentam entradas abaixo -->
+<!-- atlas import and the agent append entries below -->

@@ -22,7 +22,7 @@ def import_docs(project: Path) -> list[str]:
     cache = cursor / "project-cache.md"
     if not cache.exists():
         cache.write_text(
-            "# Project Source Cache\n\nConsulta por busca; nunca ler inteiro.\n\n",
+            "# Project Source Cache\n\nSearch this file; never read it end-to-end.\n\n",
             encoding="utf-8",
         )
         actions.append("create project-cache.md")
@@ -41,7 +41,7 @@ def import_docs(project: Path) -> list[str]:
 
     for path in candidates:
         rel = path.relative_to(project).as_posix()
-        if f"**endereço:** `{rel}`" in existing:
+        if f"**path:** `{rel}`" in existing or f"**endereço:** `{rel}`" in existing:
             continue
         first = ""
         for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -53,7 +53,9 @@ def import_docs(project: Path) -> list[str]:
                 first = line[2:].strip()
                 break
         name = path.name
-        additions.append(f"### {name}\n- **endereço:** `{rel}`\n- **descrição:** {first or 'Imported by atlas import.'}\n")
+        additions.append(
+            f"### {name}\n- **path:** `{rel}`\n- **description:** {first or 'Imported by atlas import.'}\n"
+        )
 
     if additions:
         with cache.open("a", encoding="utf-8") as f:

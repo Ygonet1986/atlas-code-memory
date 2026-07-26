@@ -26,14 +26,16 @@ Never read an entire index. See `reference.md`.
 
 ```bash
 atlas init [--global-rule]
-atlas doctor
-atlas status
-atlas stale
-atlas import
-atlas checkpoint file.md
-atlas eval
+atlas doctor | status | stale | import | migrate | onboard
+atlas route "question"
+atlas graph add|list|ready|stale
+atlas checkpoint [--write] [--mine] file.md
+atlas sync export|import
+atlas watch [--once]
+atlas eval [--transcript]
+atlas mcp
 atlas hooks install
-atlas metrics
+atlas metrics [--send]
 ```
 
 ## Protocol
@@ -43,6 +45,10 @@ atlas metrics
 - Edits → project-cache partial update; checkpoint after meaningful features.
 - Secrets never persisted; validate with `atlas checkpoint`.
 - Code beats palace on conflict → `superseded`.
+
+## MCP
+
+Prefer `atlas_recall_route` / `atlas_stale` / `atlas_checkpoint` when the Atlas MCP server is configured.
 
 ## Anti-patterns
 

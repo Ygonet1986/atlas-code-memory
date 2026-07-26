@@ -1,11 +1,15 @@
 ---
-description: Atlas obrigatório — memory router for AI coding agents
+description: Atlas mandatory — memory router for AI coding agents
 alwaysApply: true
 ---
 
 # Atlas
 
 Mandatory memory router. **One query order.** Never run AI Mind Map alongside Graphify.
+
+## Why
+
+AI coding sessions forget decisions and re-grep the repo. Atlas forces a cheap, stable path: memory map → decisions → code graph → file index.
 
 ## Order
 
@@ -19,7 +23,7 @@ Missing layer → skip. Never invent memory hits.
 
 ## Bootstrap
 
-`atlas init` · `atlas doctor` · `atlas import`
+`atlas init` · `atlas onboard` · `atlas doctor` · `atlas migrate`
 
 ## Write / checkpoint
 

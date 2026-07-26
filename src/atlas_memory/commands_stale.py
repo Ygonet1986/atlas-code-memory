@@ -56,14 +56,14 @@ def parse_graphify_index(text: str) -> list[dict[str, str]]:
         if not block.startswith("### "):
             continue
         name = block.splitlines()[0][4:].strip()
-        if name.startswith("<") or "nome-curto" in name:
+        if name.startswith("<") or "nome-curto" in name or "short-name" in name:
             continue
         escopo = grafo = status = ""
         for line in block.splitlines():
-            if "**escopo:**" in line:
+            if "**scope:**" in line or "**escopo:**" in line:
                 m = re.search(r"`([^`]+)`", line)
                 escopo = m.group(1) if m else ""
-            if "**grafo:**" in line:
+            if "**graph:**" in line or "**grafo:**" in line:
                 m = re.search(r"`([^`]+)`", line)
                 grafo = m.group(1) if m else ""
             if "**status:**" in line:

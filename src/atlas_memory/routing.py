@@ -64,10 +64,10 @@ def recall_route(project: Path, question: str) -> dict[str, Any]:
             if score:
                 name = block.splitlines()[0][4:].strip()
                 addr = ""
-                am = re.search(r"\*\*endereço:\*\* `([^`]+)`", block)
+                am = re.search(r"\*\*(?:path|endereço):\*\* `([^`]+)`", block)
                 if am:
                     addr = am.group(1)
-                cache_hits.append({"name": name, "endereco": addr, "score": score})
+                cache_hits.append({"name": name, "path": addr, "endereco": addr, "score": score})
         cache_hits.sort(key=lambda x: -x["score"])
 
     return {
