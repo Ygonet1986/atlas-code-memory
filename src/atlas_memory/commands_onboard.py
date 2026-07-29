@@ -55,15 +55,16 @@ def onboard(project: Path) -> list[str]:
         "## Top cache hits (heuristic)",
     ]
     for h in route.get("cache_hits") or []:
-        lines.append(f"- `{h.get('endereco') or h.get('name')}` (score={h['score']})")
+        lines.append(f"- `{h.get('path') or h.get('endereco') or h.get('name')}` (score={h['score']})")
     lines.append("")
     lines.append("## Graphs")
     graphs = route.get("graphs") or []
     if not graphs:
-        lines.append("- none registered — suggest `atlas graph add <name> --escopo <dir>`")
+        lines.append("- none registered — suggest `atlas graph add <name> --scope <dir>`")
     else:
         for g in graphs[:5]:
-            lines.append(f"- {g['name']}: `{g['escopo']}` ({g.get('status')})")
+            scope = g.get("scope") or g.get("escopo")
+            lines.append(f"- {g['name']}: `{scope}` ({g.get('status')})")
     lines.append("")
     lines.append("## Next")
     lines.append("1. `atlas doctor`")

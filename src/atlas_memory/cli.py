@@ -74,7 +74,7 @@ def cmd_stale(args: argparse.Namespace) -> int:
         return 0
     for r in reports:
         label = ", ".join(r.issues) if r.issues else "ok"
-        print(f"{r.name}: {label} (status={r.status}, escopo={r.escopo})")
+        print(f"{r.name}: {label} (status={r.status}, scope={r.scope})")
     metrics.record(_project(args), "stale")
     return 0
 
@@ -257,10 +257,18 @@ def cmd_graph(args: argparse.Namespace) -> int:
     root = _project(args)
     if args.graph_cmd == "list":
         for e in list_graphs(root):
-            print(f"{e['name']}\t{e['status']}\t{e['escopo']}")
+            print(f"{e['name']}\t{e['status']}\t{e['scope']}")
         return 0
     if args.graph_cmd == "add":
-        print(add_graph(root, args.name, args.escopo, getattr(args, "description", "") or "", args.status))
+        print(
+            add_graph(
+                root,
+                args.name,
+                args.scope,
+                getattr(args, "description", "") or "",
+                args.status,
+            )
+        )
         metrics.record(root, "graph_add", name=args.name)
         return 0
     if args.graph_cmd == "ready":
@@ -273,7 +281,13 @@ def cmd_graph(args: argparse.Namespace) -> int:
 
 
 def cmd_migrate(args: argparse.Namespace) -> int:
-    for a in migrate_project(_project(args)):
+    for a in migrate_project(
+        _project(args),
+        dry_run=getattr(args, "dry_run", False),
+        run_import=not getattr(args, "no_import", False),
+        global_rule=getattr(args, "global_rule", False),
+        install_hooks=getattr(args, "hooks", False),
+    ):
         print(a)
     return 0
 
@@ -397,8 +411,14 @@ def build_parser() -> argparse.ArgumentParser:
     g = gs.add_parser("add")
     add_project(g)
     g.add_argument("name")
-    g.add_argument("--escopo", "--scope", dest="escopo", required=True)
-    g.add_argument("--description", "--descricao", dest="description", default="")
+    g.add_argument("--scope", "--escopo", dest="scope", required=True, help="directory scope (alias: --escopo)")
+    g.add_argument(
+        "--description",
+        "--descricao",
+        dest="description",
+        default="",
+        help="short description (alias: --descricao)",
+    )
     g.add_argument("--status", default="missing", choices=["ready", "missing", "stale"])
     g.set_defaults(func=cmd_graph)
     g = gs.add_parser("ready")
@@ -410,8 +430,15 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("name")
     g.set_defaults(func=cmd_graph)
 
-    s = sub.add_parser("migrate", help="migrate legacy cursor memory files to Atlas")
+    s = sub.add_parser(
+        "migrate",
+        help="migrate an existing project to Atlas Memory (indexes, labels, import)",
+    )
     add_project(s)
+    s.add_argument("--dry-run", action="store_true", help="print planned actions without writing")
+    s.add_argument("--no-import", action="store_true", help="skip README/ADR import into cache")
+    s.add_argument("--global-rule", action="store_true", help="also install ~/.cursor/rules/atlas.mdc")
+    s.add_argument("--hooks", action="store_true", help="install git post-commit stale hook")
     s.set_defaults(func=cmd_migrate)
 
     s = sub.add_parser("onboard", help="bootstrap + brief + onboard skill")

@@ -4,6 +4,7 @@
 - [Cursor default layer](cursor-default.md) — Atlas as where-to-look / what-to-remember for Cursor
 - [Artigo (revista)](revista-atlas.md) — o que é e o que faz, tom de revista de informática
 - [Quickstart](quickstart.md)
+- [Migration guide](migration.md) — bring existing projects into Atlas
 - [Concepts](concepts.md)
 - [Adapters](adapters.md)
 - [Security](security.md)

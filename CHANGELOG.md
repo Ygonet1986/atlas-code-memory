@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.1 — 2026-07-30
+
+### Added
+- Stronger `atlas migrate`: dry-run, `--no-import`, `--global-rule`, `--hooks`, migration report
+- Portuguese → English field-label normalization (`endereço`/`escopo`/`grafo`/`descrição`)
+- [docs/migration.md](docs/migration.md) + README Migration guide (English)
+
+### Changed
+- Canonical English keys/CLI: `scope`, `graph`, `path`, `description` (PT aliases still accepted)
+- Examples and docs use `--scope` instead of `--escopo`
+
 ## 0.3.0 — 2026-07-29
 
 ### Added

@@ -71,5 +71,5 @@ MCP stdio remains `atlas-mcp`. The desktop shell (`apps/atlas-chat`) talks to th
 - `atlas bench` A/B token-proxy harness (CI)  
 - Secret scanning on checkpoints  
 - Scoped graphs for large codebases  
-- `atlas migrate` / `atlas onboard` for adoption  
+- `atlas migrate` / `atlas onboard` for adoption — see [migration.md](migration.md)  
 - MCP + HTTP daemon for agents that speak tool-calling  

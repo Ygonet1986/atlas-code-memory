@@ -54,7 +54,9 @@ atlas migrate
 atlas doctor
 ```
 
-This normalizes indexes, adds an `AGENTS.md` Atlas section when appropriate, and keeps existing cache content.
+This bootstraps missing indexes, rewrites legacy Portuguese field labels to English, adds an `AGENTS.md` Atlas section when appropriate, seeds README/ADRs into the cache, and writes `.cursor/atlas-migrate-report.md`.
+
+Full details: [migration.md](migration.md).
 
 ## Optional adapters
 

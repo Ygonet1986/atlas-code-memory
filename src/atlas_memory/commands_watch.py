@@ -20,11 +20,11 @@ def watch_project(project: Path, *, interval: float = 2.0, once: bool = False) -
     def snapshot() -> dict[str, float]:
         snap: dict[str, float] = {}
         for e in entries:
-            scope = project / e["escopo"]
-            if not scope.exists():
+            scope_path = project / e["scope"]
+            if not scope_path.exists():
                 continue
             newest = 0.0
-            for p in scope.rglob("*"):
+            for p in scope_path.rglob("*"):
                 if not p.is_file():
                     continue
                 if "graphify-out" in p.parts or ".git" in p.parts:
@@ -47,10 +47,9 @@ def watch_project(project: Path, *, interval: float = 2.0, once: bool = False) -
         changed_files: list[str] = []
         for name, mt in now.items():
             if name in mtimes and mt > mtimes[name] + 0.5:
-                # mark that scope's files as changed via escopo path
                 for e in entries:
                     if e["name"] == name:
-                        changed_files.append(e["escopo"] + "/.")
+                        changed_files.append(e["scope"] + "/.")
         if changed_files:
             updated = mark_stale_touched(project, changed_files)
             if updated:

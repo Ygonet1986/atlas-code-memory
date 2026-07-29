@@ -28,7 +28,7 @@ def list_graphs(project: Path) -> list[dict[str, str]]:
     return parse_graphify_index(path.read_text(encoding="utf-8", errors="replace"))
 
 
-def add_graph(project: Path, name: str, escopo: str, descricao: str = "", status: str = "missing") -> str:
+def add_graph(project: Path, name: str, scope: str, description: str = "", status: str = "missing") -> str:
     project = project.resolve()
     path = _index_path(project)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -37,14 +37,14 @@ def add_graph(project: Path, name: str, escopo: str, descricao: str = "", status
     entries = list_graphs(project)
     if any(e["name"] == name for e in entries):
         return f"exists {name}"
-    escopo = escopo.strip().rstrip("/")
-    grafo = f"{escopo}/graphify-out/"
+    scope = scope.strip().rstrip("/")
+    graph = f"{scope}/graphify-out/"
     block = "\n".join(
         [
             f"### {name}",
-            f"- **scope:** `{escopo}`",
-            f"- **graph:** `{grafo}`",
-            f"- **description:** {descricao or name}",
+            f"- **scope:** `{scope}`",
+            f"- **graph:** `{graph}`",
+            f"- **description:** {description or name}",
             f"- **status:** {status}",
             "",
         ]

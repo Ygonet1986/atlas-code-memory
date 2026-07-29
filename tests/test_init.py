@@ -29,3 +29,6 @@ def test_parse_skips_placeholders():
     entries = parse_graphify_index(text)
     assert len(entries) == 1
     assert entries[0]["name"] == "real"
+    assert entries[0]["scope"] == "src"
+    assert entries[0]["graph"] == "src/graphify-out/"
+    assert entries[0]["escopo"] == "src"  # deprecated alias

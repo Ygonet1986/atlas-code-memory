@@ -8,5 +8,5 @@ examples/python-service/
 
 ```bash
 atlas onboard -C examples/python-service
-atlas graph add app --escopo app --status missing
+atlas graph add app --scope app --status missing
 ```

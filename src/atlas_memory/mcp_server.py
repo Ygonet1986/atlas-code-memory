@@ -246,7 +246,12 @@ def run_mcp() -> None:
                     result = {"ok": not errors, "errors": errors, "drawer": drawer.to_dict(), "written": written}
                 elif name == "atlas_stale":
                     result = [
-                        {"name": r.name, "escopo": r.escopo, "status": r.status, "issues": r.issues}
+                        {
+                            "name": r.name,
+                            "scope": r.scope,
+                            "status": r.status,
+                            "issues": r.issues,
+                        }
                         for r in stale_report(project)
                     ]
                 elif name == "atlas_protocol_score":

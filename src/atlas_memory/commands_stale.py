@@ -44,9 +44,14 @@ SKIP_DIRS = {
 @dataclass
 class StaleReport:
     name: str
-    escopo: str
+    scope: str
     status: str
     issues: list[str]
+
+    @property
+    def escopo(self) -> str:
+        """Deprecated alias for scope (Portuguese)."""
+        return self.scope
 
 
 def parse_graphify_index(text: str) -> list[dict[str, str]]:
@@ -58,29 +63,43 @@ def parse_graphify_index(text: str) -> list[dict[str, str]]:
         name = block.splitlines()[0][4:].strip()
         if name.startswith("<") or "nome-curto" in name or "short-name" in name:
             continue
-        escopo = grafo = status = ""
+        scope = graph = status = description = ""
         for line in block.splitlines():
             if "**scope:**" in line or "**escopo:**" in line:
                 m = re.search(r"`([^`]+)`", line)
-                escopo = m.group(1) if m else ""
+                scope = m.group(1) if m else ""
             if "**graph:**" in line or "**grafo:**" in line:
                 m = re.search(r"`([^`]+)`", line)
-                grafo = m.group(1) if m else ""
+                graph = m.group(1) if m else ""
+            if "**description:**" in line or "**descrição:**" in line or "**descricao:**" in line:
+                description = line.split(":**", 1)[-1].strip()
             if "**status:**" in line:
                 status = line.split("**status:**", 1)[-1].strip().split()[0]
-        if not escopo or escopo.startswith("<"):
+        if not scope or scope.startswith("<"):
             continue
-        out.append({"name": name, "escopo": escopo, "grafo": grafo, "status": status})
+        # English keys are canonical; Portuguese aliases kept for older callers.
+        out.append(
+            {
+                "name": name,
+                "scope": scope,
+                "graph": graph,
+                "status": status,
+                "description": description,
+                "escopo": scope,
+                "grafo": graph,
+                "descricao": description,
+            }
+        )
     return out
 
 
-def _graph_json(project: Path, escopo: str, grafo: str) -> Path:
-    if grafo:
-        p = project / grafo
+def _graph_json(project: Path, scope: str, graph: str) -> Path:
+    if graph:
+        p = project / graph
         if p.name == "graph.json":
             return p
         return p / "graph.json"
-    return project / escopo / "graphify-out" / "graph.json"
+    return project / scope / "graphify-out" / "graph.json"
 
 
 def _sources_newer_than(scope: Path, graph_mtime: float, cap: int = 4000) -> bool:
@@ -113,21 +132,21 @@ def stale_report(project: Path) -> list[StaleReport]:
     reports: list[StaleReport] = []
     for e in entries:
         issues: list[str] = []
-        gj = _graph_json(project, e["escopo"], e["grafo"])
+        gj = _graph_json(project, e["scope"], e["graph"])
         status = e["status"]
         if status == "missing" or not gj.exists():
             issues.append("graph missing")
         elif status == "stale":
             issues.append("marked stale")
         elif gj.exists():
-            if _sources_newer_than(project / e["escopo"], gj.stat().st_mtime):
+            if _sources_newer_than(project / e["scope"], gj.stat().st_mtime):
                 issues.append("sources newer than graph.json")
-        reports.append(StaleReport(e["name"], e["escopo"], status, issues))
+        reports.append(StaleReport(e["name"], e["scope"], status, issues))
     return reports
 
 
 def mark_stale_touched(project: Path, changed_files: list[str]) -> list[str]:
-    """Set status: stale for graphify-index entries whose escopo prefixes a changed file."""
+    """Set status: stale for graphify-index entries whose scope prefixes a changed file."""
     project = project.resolve()
     index = project / ".cursor" / "graphify-index.md"
     if not index.exists():
@@ -137,9 +156,9 @@ def mark_stale_touched(project: Path, changed_files: list[str]) -> list[str]:
     updated = []
     new_text = text
     for e in entries:
-        escopo = e["escopo"].rstrip("/") + "/"
+        scope = e["scope"].rstrip("/") + "/"
         hit = any(
-            f.replace("\\", "/").startswith(escopo) or f.replace("\\", "/") == e["escopo"]
+            f.replace("\\", "/").startswith(scope) or f.replace("\\", "/") == e["scope"]
             for f in changed_files
         )
         if not hit or e["status"] == "stale":

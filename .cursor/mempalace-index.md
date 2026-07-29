@@ -25,35 +25,35 @@ Search this file; never read it end-to-end.
 ### atlas-memory-architecture
 - **wing:** `atlas-memory`
 - **room:** `architecture`
-- **workspace:** `/Users/igorcoutrimlacerda/Documents/atlas-memory`
+- **workspace:** `C:\Users\igorc\Documents\Nova pasta`
 - **description:** Atlas room `architecture` for this project.
 - **status:** active
 
 ### atlas-memory-debugging
 - **wing:** `atlas-memory`
 - **room:** `debugging`
-- **workspace:** `/Users/igorcoutrimlacerda/Documents/atlas-memory`
+- **workspace:** `C:\Users\igorc\Documents\Nova pasta`
 - **description:** Atlas room `debugging` for this project.
 - **status:** active
 
 ### atlas-memory-conventions
 - **wing:** `atlas-memory`
 - **room:** `conventions`
-- **workspace:** `/Users/igorcoutrimlacerda/Documents/atlas-memory`
+- **workspace:** `C:\Users\igorc\Documents\Nova pasta`
 - **description:** Atlas room `conventions` for this project.
 - **status:** active
 
 ### atlas-memory-build
 - **wing:** `atlas-memory`
 - **room:** `build`
-- **workspace:** `/Users/igorcoutrimlacerda/Documents/atlas-memory`
+- **workspace:** `C:\Users\igorc\Documents\Nova pasta`
 - **description:** Atlas room `build` for this project.
 - **status:** active
 
 ### atlas-memory
 - **wing:** `atlas-memory`
 - **room:** `general`
-- **workspace:** `/Users/igorcoutrimlacerda/Documents/atlas-memory`
+- **workspace:** `C:\Users\igorc\Documents\Nova pasta`
 - **description:** Atlas room `general` for this project.
 - **status:** active
 

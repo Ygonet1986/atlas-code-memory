@@ -24,4 +24,10 @@ Statuses: `ready` | `missing` | `stale` — use `atlas stale`.
 
 <!-- One scope = one graph. Avoid graphifying the root of huge monorepos. -->
 
-_No Graphify scopes registered yet._
+### src
+- **scope:** `src`
+- **graph:** `src/graphify-out/`
+- **description:** Atlas Memory Python package (src/atlas_memory)
+- **status:** ready
+
+

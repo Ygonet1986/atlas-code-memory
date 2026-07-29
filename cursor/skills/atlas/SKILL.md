@@ -28,10 +28,12 @@ Never read an entire index. Never grep the monorepo before `atlas route` / `atla
 ```bash
 atlas init [--global-rule]
 atlas doctor | status | stale | import | migrate | onboard
+atlas migrate [--dry-run] [--no-import] [--global-rule] [--hooks]
 atlas route "question"
 atlas bench [--fixture] [-C project]
 atlas daemon | connect --editor cursor
-atlas graph add|list|ready|stale
+atlas graph add <name> --scope <dir>
+atlas graph list|ready|stale
 atlas checkpoint [--write] [--mine] file.md
 atlas life init|wake|remember|recall|rollup|pull|push|sync|serve
 atlas sync export|import
@@ -41,6 +43,8 @@ atlas mcp
 atlas hooks install
 atlas metrics [--send]
 ```
+
+Canonical index field labels are English (`path`, `scope`, `graph`, `description`). Older Portuguese labels are still read; `atlas migrate` rewrites them.
 
 ## Protocol
 

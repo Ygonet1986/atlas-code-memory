@@ -87,12 +87,49 @@ atlas doctor
 
 Open the project in Cursor. The Atlas rule steers the agent automatically.
 
-Migrate an existing setup:
+---
+
+## Migration guide
+
+Bring an **existing** project into Atlas Memory without throwing away README, ADRs, or Cursor rules.
+
+### One command
 
 ```bash
+cd ~/code/legacy-app
 atlas migrate -C .
 atlas doctor -C .
 ```
+
+Optional flags:
+
+```bash
+atlas migrate --dry-run          # plan only (no writes)
+atlas migrate --no-import        # skip README/ADR seeding
+atlas migrate --global-rule      # also install ~/.cursor/rules/atlas.mdc
+atlas migrate --hooks            # install git post-commit stale hook
+```
+
+### What migrate does
+
+1. Renames legacy Cursor memory rules → `.cursor/rules/atlas.mdc`
+2. Bootstraps missing indexes / skill / `.atlasignore` (`atlas init`)
+3. Rewrites Portuguese field labels to English (`endereço`→`path`, `escopo`→`scope`, …)
+4. Ensures an `AGENTS.md` Atlas section when Cursor rules already exist
+5. Seeds `project-cache` + drawer stubs from README / `docs/adr` (`atlas import`)
+6. Writes `.cursor/atlas-migrate-report.md` with next steps
+
+### After migrate
+
+1. Read `.cursor/atlas-migrate-report.md`
+2. Fix anything `atlas doctor` reports
+3. Review `.cursor/atlas-import/*.drawer.md` → `atlas checkpoint --write --mine`
+4. Register scopes: `atlas graph add app --scope app` (never the monorepo root)
+5. Optional adapters: MemPalace and Graphify **or** Mind Map
+
+English is the canonical language for Atlas indexes and CLI. Parsers still accept older Portuguese labels; new writes use English only. CLI aliases: `--escopo` → `--scope`, `--descricao` → `--description`.
+
+Full walkthrough (bare repo, Cursor legacy, MemPalace/Graphify, monorepos, teams, rollback): **[docs/migration.md](docs/migration.md)**.
 
 ---
 
@@ -117,12 +154,12 @@ Missing layer → skip. Never invent memory hits.
 | `atlas init` | Bootstrap indexes |
 | `atlas onboard` | Import README/ADRs + onboarding brief |
 | `atlas doctor` | Diagnose setup |
-| `atlas migrate` | Legacy Cursor memory → Atlas |
+| `atlas migrate` | Migrate existing project → Atlas Memory |
 | `atlas route "…"` | JSON recall plan for a question |
 | `atlas bench` | A/B token-proxy proof (grep vs route) |
 | `atlas daemon` | Local HTTP for any AI editor |
 | `atlas connect` | Write MCP/rules for Cursor/Claude/generic |
-| `atlas graph …` | Manage scoped graphs |
+| `atlas graph …` | Manage scoped graphs (`--scope`) |
 | `atlas checkpoint --write/--mine` | Validate + file drawers by room |
 | `atlas life …` | Personal memory (wake/remember/sync) + Chat serve |
 | `atlas sync export/import` | Team bundles |
@@ -132,7 +169,7 @@ Missing layer → skip. Never invent memory hits.
 
 Life + desktop: [docs/life.md](docs/life.md) · [docs/atlas-chat.md](docs/atlas-chat.md)
 
-Full docs: [docs/index.md](docs/index.md)
+Full docs: [docs/index.md](docs/index.md) · Migration: [docs/migration.md](docs/migration.md)
 
 ---
 

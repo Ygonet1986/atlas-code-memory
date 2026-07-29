@@ -94,7 +94,9 @@ def recall_route(
     graphs = []
     if gfi.exists():
         for e in parse_graphify_index(gfi.read_text(encoding="utf-8", errors="replace")):
-            blob = f"{e['name']} {e['escopo']} {e.get('status', '')} {e.get('descricao', '')}".lower()
+            scope = e.get("scope") or e.get("escopo") or ""
+            desc = e.get("description") or e.get("descricao") or ""
+            blob = f"{e['name']} {scope} {e.get('status', '')} {desc}".lower()
             score = sum(1 for tok in tokens if tok in blob)
             status = (e.get("status") or "").lower()
             # Prefer ready scopes; demote stale/missing for ranking (still report)
@@ -118,7 +120,11 @@ def recall_route(
             if score:
                 name = block.splitlines()[0][4:].strip()
                 addr = ""
-                am = re.search(r"\*\*(?:path|endereço):\*\* `([^`]+)`", block)
+                am = re.search(
+                    r"\*\*(?:path|endereço|endereco):\*\* `([^`]+)`",
+                    block,
+                    flags=re.IGNORECASE,
+                )
                 if am:
                     addr = am.group(1)
                 desc = ""
