@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "atlas-memory": {
+      "command": "py",
+      "args": ["-3", "-m", "atlas_memory.mcp_server"],
+      "cwd": "c:\\Users\\igorc\\Downloads\\atlas-memory"
+    }
+  }
+}

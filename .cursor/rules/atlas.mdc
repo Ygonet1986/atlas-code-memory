@@ -1,54 +1,75 @@
 ---
-description: Atlas mandatory — memory router for AI coding agents
+description: Atlas mandatory — memory router + persistent Life memory for this agent
 alwaysApply: true
 ---
 
 # Atlas
 
-Mandatory memory router. **One query order.** Never run AI Mind Map alongside Graphify.
+Mandatory memory router + persistent personal memory. **One query order.** Never run AI Mind Map alongside Graphify.
 
-## Why
+## Atlas Walk (retrieval protocol)
 
-AI coding sessions forget decisions and re-grep the repo. Atlas forces a cheap, stable path: memory map → decisions → code graph → file index.
+1. **Memory Index** → wing/room (search; never read whole file)
+2. **Memory Provider** (MemPalace if installed) → scoped recall/write
+3. **Graph Index** → scoped graph
+4. **Graph Provider** (Graphify *or* Mind Map — one only) → code relations
+5. **Index Provider** (project-cache) → real file
 
-## Order
+Missing layer → skip. Never invent memory hits. Stop at first FOUND.
 
-1. **mempalace-index** → wing/room (search; never read whole file)
-2. **MemPalace** (if installed) → scoped recall/write
-3. **graphify-index** → scoped graph
-4. **Graphify *or* Mind Map** → code relations (one only)
-5. **project-cache** → real file
+## Life Memory (MANDATORY for this agent)
 
-Missing layer → skip. Never invent memory hits.
+This agent uses Atlas Life as persistent memory across all conversations.
+Repository: `Ygonet1986/atlas-life` (private GitHub).
+Root: `~/atlas-life` or `$ATLAS_LIFE_ROOT`.
 
-## Bootstrap
+### Session start
 
-`atlas init` · `atlas onboard` · `atlas doctor` · `atlas migrate` · `atlas life init`
+1. Call `atlas_life_wake` MCP tool (or `atlas life wake` CLI)
+2. Read the session init if present — resume from where we left off
+3. Load hot drawers (scored by relevance, not just recency)
+
+### During conversation
+
+- When the user shares durable facts, preferences, decisions, events, or mentions people/places:
+  call `atlas_life_remember` with appropriate `type`, `summary`, `topics`, and `entities`
+- Entity names (people, places, concepts) MUST go in the `entities` field
+- Use `push: true` to auto-commit to GitHub
+- To recall past knowledge: `atlas_life_recall` with a question
+- To find entity history: `atlas_life_entity_detail` or `atlas_life_entity_graph`
+
+### Session end
+
+Before the conversation ends or when the user says goodbye:
+call `atlas life session-end` (or the API) with summary + topics + last messages.
+This prepares the init for the next wake so the agent resumes seamlessly.
+
+### Entity management
+
+- `atlas_life_entity_list` — all known entities
+- `atlas_life_entity_detail` — drawers about a specific entity
+- `atlas_life_entity_merge` — merge duplicate entities
+- `atlas_life_entity_alias` — add alias to entity
+- `atlas_life_entity_relations` — co-occurrence graph
 
 ## Write / checkpoint
 
-Drawer types: `decision` | `lesson` | `preference` | `bugfix` | `build`  
-(+ life: `memory` | `event` | `person` | `goal`)  
-Rooms: `architecture` | `debugging` | `conventions` | `build` | `general`  
-(+ life: `day` | `week` | `month` | `year` | `people`)  
-Include git fields when known. **No secrets.**  
-Palace vs code conflict: **code wins** → mark `superseded`.  
-After a feature/bugfix: one checkpoint drawer (`atlas checkpoint` to validate).
-
-## Life (any conversation)
-
-Personal memory palace: `$ATLAS_LIFE_ROOT` / `~/atlas-life`, GitHub **private**.  
-Mind Map only. `atlas life wake` → `remember` → `sync`/`--push`.  
-Desktop: Atlas Chat + DeepSeek (`atlas life serve`). Never store API keys in drawers.  
-End of chat → **End & init** / `atlas life session-end` prepares next wake.  
-Windows login: `atlas life autostart install` (serve + browser).
+Drawer types: `decision` | `lesson` | `preference` | `bugfix` | `build`
+(+ life: `memory` | `event` | `person` | `goal`)
+Rooms: `architecture` | `debugging` | `conventions` | `build` | `general`
+(+ life: `day` | `week` | `month` | `year` | `people`)
+Include git fields when known. **No secrets.**
+Palace vs code conflict: **code wins** → mark `superseded`.
 
 ## Stale
 
 `atlas stale` · git hook may set `status: stale` · update graph then set `ready`.
 
-## Wake
+## Rules
 
-Session start: wing from index + small hot set only — no palace dump.
+- Never store API keys, tokens, or secrets in drawers
+- Pin important drawers with `atlas life pin <path>`
+- Rollup weekly: `atlas life rollup week`
+- Code always wins over stale memory
 
 Details: skill `atlas` + `reference.md`.
