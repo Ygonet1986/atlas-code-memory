@@ -9,6 +9,10 @@
 | `preference` | User or project preference |
 | `bugfix` | Root cause + fix |
 | `build` | Toolchain/CI (no secrets) |
+| `memory` | Life fact from conversation |
+| `event` | Something that happened |
+| `person` | People notes |
+| `goal` | Intent / goal |
 
 ```text
 [type:decision] [status:active]
@@ -21,13 +25,17 @@ files: <paths>
 supersedes: <optional>
 ```
 
+Life drawers may also include `when:`, `period:`, `topics:`, `wing:`, `room:`.
+
 Statuses: `active` | `superseded` | `archived`
 
-Validate: `atlas checkpoint drawer.md`
+Validate: `atlas checkpoint drawer.md` · life: `atlas life remember`
 
 ## Rooms
 
-`architecture` · `debugging` · `conventions` · `build` · `general`
+Project: `architecture` · `debugging` · `conventions` · `build` · `general`
+
+Life: `day` · `week` · `month` · `year` · `people` · `general`
 
 ## Conflict
 
@@ -36,7 +44,7 @@ Trust the repository. Mark obsolete drawers `superseded` and file a new `active`
 ## Secrets deny list
 
 Do not store: `.env*`, API keys, tokens, private keys, credential JSON, DB URLs with passwords.
-`atlas checkpoint` rejects common patterns.
+`atlas checkpoint` rejects common patterns. Never put `DEEPSEEK_API_KEY` in life drawers or git.
 
 ## Stale
 
@@ -50,6 +58,11 @@ Cross-project patterns → wing `atlas_shared`. Do not mix product drawers into 
 ## Wake (L0)
 
 Wing + few hot drawers only. No full palace dump.
+Life: `atlas life wake` (today + week summary + people).
+
+## Life + GitHub
+
+`$ATLAS_LIFE_ROOT` or `~/atlas-life`. Private repo. `atlas life sync` / remember `--push`.
 
 ## Metrics
 

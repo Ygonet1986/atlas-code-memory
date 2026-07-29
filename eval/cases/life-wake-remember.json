@@ -1,0 +1,6 @@
+{
+  "id": "life-wake-remember",
+  "question": "what did we talk about today atlas life wake",
+  "expect_layer": "mempalace",
+  "expect_contains": ["wing"]
+}

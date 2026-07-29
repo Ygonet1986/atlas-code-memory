@@ -90,7 +90,7 @@ Missing layer → skip. Never invent memory hits.
 
 ---
 
-## Commands (0.2)
+## Commands (0.3)
 
 | Command | Purpose |
 |---------|---------|
@@ -101,10 +101,13 @@ Missing layer → skip. Never invent memory hits.
 | `atlas route "…"` | JSON recall plan for a question |
 | `atlas graph …` | Manage scoped graphs |
 | `atlas checkpoint --write/--mine` | Validate + file drawers by room |
+| `atlas life …` | Personal memory (wake/remember/sync) + Chat serve |
 | `atlas sync export/import` | Team bundles |
 | `atlas watch` | Mark graphs stale on change |
 | `atlas eval` / `--transcript` | Index + protocol scores |
 | `atlas mcp` | MCP stdio server |
+
+Life + desktop: [docs/life.md](docs/life.md) · [docs/atlas-chat.md](docs/atlas-chat.md)
 
 Full docs: [docs/index.md](docs/index.md)
 

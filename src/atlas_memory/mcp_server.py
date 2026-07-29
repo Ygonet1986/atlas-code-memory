@@ -4,14 +4,14 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .commands_stale import parse_graphify_index, stale_report
+from .commands_stale import stale_report
 from .drawer import parse_drawer_markdown, validate_drawer
+from . import life as life_mod
 from .routing import protocol_score, recall_route
 
 
 def run_mcp() -> None:
     """Minimal stdio MCP server (JSON-RPC style subset for Cursor)."""
-    # Lazy import-free loop: Cursor MCP expects JSON-RPC over stdin/stdout.
     import sys
 
     def reply(msg_id: Any, result: Any) -> None:
@@ -71,6 +71,133 @@ def run_mcp() -> None:
                 "required": ["transcript"],
             },
         },
+        {
+            "name": "atlas_life_wake",
+            "description": "Life palace L0 wake: today hot drawers + week/people snippets.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "life_root": {"type": "string", "description": "atlas-life root (optional)"},
+                },
+            },
+        },
+        {
+            "name": "atlas_life_remember",
+            "description": "Write a validated life drawer (day by default); optional git push.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "life_root": {"type": "string"},
+                    "text": {"type": "string", "description": "Full drawer markdown"},
+                    "type": {"type": "string"},
+                    "summary": {"type": "string"},
+                    "why": {"type": "string"},
+                    "topics": {"type": "array", "items": {"type": "string"}},
+                    "entities": {"type": "array", "items": {"type": "string"}, "description": "Named entities (people, objects, places) to link this drawer to"},
+                    "room": {"type": "string"},
+                    "period": {"type": "string"},
+                    "when": {"type": "string"},
+                    "push": {"type": "boolean"},
+                },
+            },
+        },
+        {
+            "name": "atlas_life_recall",
+            "description": "Route a life question to temporal drawers (day/week/month/year/people).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "life_root": {"type": "string"},
+                    "question": {"type": "string"},
+                    "limit": {"type": "integer"},
+                },
+                "required": ["question"],
+            },
+        },
+        {
+            "name": "atlas_life_entity_list",
+            "description": "List all known entities with drawer ref counts.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "life_root": {"type": "string"},
+                },
+            },
+        },
+        {
+            "name": "atlas_life_entity_detail",
+            "description": "Get all drawers linked to a named entity.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "life_root": {"type": "string"},
+                    "name": {"type": "string", "description": "Entity name"},
+                },
+                "required": ["name"],
+            },
+        },
+        {
+            "name": "atlas_life_entity_graph",
+            "description": "Build a Mind Map graph for a single entity.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "life_root": {"type": "string"},
+                    "name": {"type": "string", "description": "Entity name"},
+                },
+                "required": ["name"],
+            },
+        },
+        {
+            "name": "atlas_life_entity_relations",
+            "description": "Co-occurrence graph between entities (entities appearing in the same drawers).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "life_root": {"type": "string"},
+                },
+            },
+        },
+        {
+            "name": "atlas_life_entity_merge",
+            "description": "Merge source entity into target (move refs, add as alias).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "life_root": {"type": "string"},
+                    "source": {"type": "string", "description": "Source entity name"},
+                    "target": {"type": "string", "description": "Target entity name"},
+                },
+                "required": ["source", "target"],
+            },
+        },
+        {
+            "name": "atlas_life_entity_alias",
+            "description": "Add an alias to an existing entity.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "life_root": {"type": "string"},
+                    "name": {"type": "string", "description": "Entity name"},
+                    "alias": {"type": "string", "description": "Alias to add"},
+                },
+                "required": ["name", "alias"],
+            },
+        },
+        {
+            "name": "atlas_life_rollup",
+            "description": "Consolidate a life period into a summary drawer.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "life_root": {"type": "string"},
+                    "period": {"type": "string", "enum": ["day", "week", "month", "year"]},
+                    "when": {"type": "string"},
+                    "push": {"type": "boolean"},
+                },
+                "required": ["period"],
+            },
+        },
     ]
 
     for line in sys.stdin:
@@ -91,7 +218,7 @@ def run_mcp() -> None:
                 {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "atlas-memory", "version": "0.2.0"},
+                    "serverInfo": {"name": "atlas-memory", "version": "0.3.0"},
                 },
             )
         elif method == "notifications/initialized":
@@ -102,6 +229,7 @@ def run_mcp() -> None:
             name = params.get("name")
             args = params.get("arguments") or {}
             project = Path(args.get("project") or ".").resolve()
+            life_root = Path(args["life_root"]).expanduser() if args.get("life_root") else None
             try:
                 if name == "atlas_recall_route":
                     result = recall_route(project, args.get("question", ""))
@@ -123,6 +251,50 @@ def run_mcp() -> None:
                     ]
                 elif name == "atlas_protocol_score":
                     result = protocol_score(args.get("transcript", ""))
+                elif name == "atlas_life_wake":
+                    result = life_mod.wake(life_root)
+                elif name == "atlas_life_remember":
+                    if args.get("text"):
+                        result = life_mod.remember(
+                            life_root, args["text"], push_after=bool(args.get("push"))
+                        )
+                    else:
+                        result = life_mod.remember(
+                            life_root,
+                            None,
+                            type=args.get("type") or "memory",
+                            summary=args.get("summary"),
+                            why=args.get("why") or "",
+                            topics=args.get("topics"),
+                            entities=args.get("entities"),
+                            room=args.get("room") or "day",
+                            period=args.get("period") or "day",
+                            when=args.get("when"),
+                            push_after=bool(args.get("push")),
+                        )
+                elif name == "atlas_life_recall":
+                    result = life_mod.recall(
+                        life_root, args.get("question", ""), limit=int(args.get("limit") or 10)
+                    )
+                elif name == "atlas_life_entity_list":
+                    result = life_mod.entity_list(life_root)
+                elif name == "atlas_life_entity_detail":
+                    result = life_mod.entity_detail(life_root, name=args.get("name", ""))
+                elif name == "atlas_life_entity_graph":
+                    result = life_mod.entity_graph(life_root, name=args.get("name", ""))
+                elif name == "atlas_life_entity_relations":
+                    result = life_mod.entity_relations(life_root)
+                elif name == "atlas_life_entity_merge":
+                    result = life_mod.entity_merge(life_root, args.get("source", ""), args.get("target", ""))
+                elif name == "atlas_life_entity_alias":
+                    result = life_mod.entity_add_alias(life_root, args.get("name", ""), args.get("alias", ""))
+                elif name == "atlas_life_rollup":
+                    result = life_mod.rollup(
+                        life_root,
+                        args.get("period", "day"),
+                        when=args.get("when"),
+                        push_after=bool(args.get("push")),
+                    )
                 else:
                     fail(msg_id, -32601, f"unknown tool {name}")
                     continue

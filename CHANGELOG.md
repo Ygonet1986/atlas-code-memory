@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 — 2026-07-29
+
+### Added
+- **Atlas Life**: temporal conversation memory (`day`/`week`/`month`/`year`) on a private GitHub repo
+- CLI: `atlas life init|wake|remember|recall|rollup|pull|push|sync|serve`
+- MCP tools: `atlas_life_wake`, `atlas_life_remember`, `atlas_life_recall`, `atlas_life_rollup`
+- Drawer types: `memory`, `event`, `person`, `goal` (+ life rooms)
+- Atlas Chat desktop (`apps/atlas-chat`): DeepSeek sidecar + Tauri scaffold; auto commit/push
+- Docs: `docs/life.md`, `docs/atlas-chat.md`
+
 ## 0.2.0 — 2026-07-26
 
 ### Added

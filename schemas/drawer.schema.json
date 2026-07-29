@@ -7,7 +7,17 @@
   "properties": {
     "type": {
       "type": "string",
-      "enum": ["decision", "lesson", "preference", "bugfix", "build"]
+      "enum": [
+        "decision",
+        "lesson",
+        "preference",
+        "bugfix",
+        "build",
+        "memory",
+        "event",
+        "person",
+        "goal"
+      ]
     },
     "status": {
       "type": "string",
@@ -31,7 +41,33 @@
     "wing": { "type": ["string", "null"] },
     "room": {
       "type": ["string", "null"],
-      "enum": ["architecture", "debugging", "conventions", "build", "general", null]
+      "enum": [
+        "architecture",
+        "debugging",
+        "conventions",
+        "build",
+        "general",
+        "day",
+        "week",
+        "month",
+        "year",
+        "people",
+        null
+      ]
+    },
+    "when": { "type": ["string", "null"], "description": "ISO date for life drawers" },
+    "period": {
+      "type": ["string", "null"],
+      "enum": ["day", "week", "month", "year", null]
+    },
+    "topics": {
+      "type": ["array", "null"],
+      "items": { "type": "string" }
+    },
+    "entities": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "Named entities (people, objects, places, concepts) this drawer is about"
     }
   },
   "additionalProperties": true

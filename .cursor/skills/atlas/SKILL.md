@@ -30,6 +30,7 @@ atlas doctor | status | stale | import | migrate | onboard
 atlas route "question"
 atlas graph add|list|ready|stale
 atlas checkpoint [--write] [--mine] file.md
+atlas life init|wake|remember|recall|rollup|pull|push|sync|serve
 atlas sync export|import
 atlas watch [--once]
 atlas eval [--transcript]
@@ -45,10 +46,12 @@ atlas metrics [--send]
 - Edits → project-cache partial update; checkpoint after meaningful features.
 - Secrets never persisted; validate with `atlas checkpoint`.
 - Code beats palace on conflict → `superseded`.
+- Personal / any conversation → **life** root (`atlas life wake` / `remember`); Mind Map only; GitHub private sync.
 
 ## MCP
 
 Prefer `atlas_recall_route` / `atlas_stale` / `atlas_checkpoint` when the Atlas MCP server is configured.
+Life: `atlas_life_wake` / `atlas_life_remember` / `atlas_life_recall` / `atlas_life_rollup`.
 
 ## Anti-patterns
 

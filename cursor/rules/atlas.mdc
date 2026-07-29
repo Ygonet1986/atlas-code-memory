@@ -23,15 +23,25 @@ Missing layer → skip. Never invent memory hits.
 
 ## Bootstrap
 
-`atlas init` · `atlas onboard` · `atlas doctor` · `atlas migrate`
+`atlas init` · `atlas onboard` · `atlas doctor` · `atlas migrate` · `atlas life init`
 
 ## Write / checkpoint
 
 Drawer types: `decision` | `lesson` | `preference` | `bugfix` | `build`  
+(+ life: `memory` | `event` | `person` | `goal`)  
 Rooms: `architecture` | `debugging` | `conventions` | `build` | `general`  
+(+ life: `day` | `week` | `month` | `year` | `people`)  
 Include git fields when known. **No secrets.**  
 Palace vs code conflict: **code wins** → mark `superseded`.  
 After a feature/bugfix: one checkpoint drawer (`atlas checkpoint` to validate).
+
+## Life (any conversation)
+
+Personal memory palace: `$ATLAS_LIFE_ROOT` / `~/atlas-life`, GitHub **private**.  
+Mind Map only. `atlas life wake` → `remember` → `sync`/`--push`.  
+Desktop: Atlas Chat + DeepSeek (`atlas life serve`). Never store API keys in drawers.  
+End of chat → **End & init** / `atlas life session-end` prepares next wake.  
+Windows login: `atlas life autostart install` (serve + browser).
 
 ## Stale
 

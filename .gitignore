@@ -8,3 +8,8 @@ build/
 .cursor/atlas-metrics.json
 **/atlas-metrics.json
 .DS_Store
+apps/**/node_modules/
+apps/**/dist/
+apps/atlas-chat/src-tauri/target/
+.env
+.env.*

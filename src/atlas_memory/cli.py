@@ -13,6 +13,7 @@ from .commands_graph import add_graph, list_graphs, set_graph_status
 from .commands_hooks import install_git_hooks
 from .commands_import import import_docs
 from .commands_init import init_project
+from .commands_life import register_life_parser
 from .commands_migrate import migrate_project
 from .commands_onboard import onboard
 from .commands_stale import mark_stale_touched, stale_report
@@ -355,6 +356,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("mcp", help="run Atlas MCP server on stdio")
     s.set_defaults(func=cmd_mcp)
+
+    register_life_parser(sub)
 
     return p
 
