@@ -28,6 +28,6 @@ Statuses: `ready` | `missing` | `stale` — use `atlas stale`.
 - **scope:** `src`
 - **graph:** `src/graphify-out/`
 - **description:** Atlas Memory Python package (src/atlas_memory)
-- **status:** ready
+- **status:** stale
 
 
