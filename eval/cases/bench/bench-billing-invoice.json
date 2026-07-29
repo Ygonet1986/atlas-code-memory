@@ -1,0 +1,6 @@
+{
+  "id": "bench-billing-invoice",
+  "question": "Where is invoice billing generation?",
+  "expect_path_contains": ["src/billing/invoice.py"],
+  "min_savings_pct": 40
+}

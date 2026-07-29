@@ -4,14 +4,34 @@
 [![PyPI](https://img.shields.io/badge/PyPI-atlas--memory-blue)](https://pypi.org/project/atlas-memory/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**The memory router for AI coding agents.**
+**The token GPS for AI coding — Cursor's where-to-look / what-to-remember layer.**
 
-Stop re-teaching your agent the same repo every chat. Atlas gives every AI coding session a **fixed path**: decisions → code map → the right file — without dumping your entire codebase into context.
+Stop dumping the monorepo into context. Atlas **understands** the project via indexes, **disambiguates** the right files, **remembers** decisions, and **saves exploration tokens** on the next turn.
 
 ```text
 mempalace-index  →  MemPalace (optional long-term memory)
 graphify-index   →  Graphify or Mind Map (optional; pick one)
 project-cache    →  real files (always)
+```
+
+Make it Cursor's default orientation + memory layer:
+
+```bash
+atlas connect --editor cursor
+# ~/.cursor/rules/atlas.mdc + MCP atlas-mcp — then reload MCP
+```
+
+Prove token savings:
+
+```bash
+atlas bench --fixture
+```
+
+Local daemon (any AI editor):
+
+```bash
+atlas daemon          # HTTP on 127.0.0.1:8765
+atlas-mcp             # stdio MCP
 ```
 
 ---
@@ -99,6 +119,9 @@ Missing layer → skip. Never invent memory hits.
 | `atlas doctor` | Diagnose setup |
 | `atlas migrate` | Legacy Cursor memory → Atlas |
 | `atlas route "…"` | JSON recall plan for a question |
+| `atlas bench` | A/B token-proxy proof (grep vs route) |
+| `atlas daemon` | Local HTTP for any AI editor |
+| `atlas connect` | Write MCP/rules for Cursor/Claude/generic |
 | `atlas graph …` | Manage scoped graphs |
 | `atlas checkpoint --write/--mine` | Validate + file drawers by room |
 | `atlas life …` | Personal memory (wake/remember/sync) + Chat serve |

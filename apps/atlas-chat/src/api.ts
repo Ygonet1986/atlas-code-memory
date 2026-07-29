@@ -66,13 +66,14 @@ export function pull(lifeRoot?: string) {
   });
 }
 
-export function wake() {
+export function wake(lifeRoot?: string) {
+  const q = lifeRoot ? `?life_root=${encodeURIComponent(lifeRoot)}` : "";
   return api<{
     prompt: string;
     keys: Record<string, string>;
     ok: boolean;
     session_init?: { summary?: string; greeting?: string } | null;
-  }>("/api/wake");
+  }>(`/api/wake${q}`);
 }
 
 export function mindmap(period: string, lifeRoot?: string) {
@@ -103,6 +104,7 @@ export type EntityDetail = {
   ok: boolean;
   slug: string;
   name: string;
+  aliases?: string[];
   last_seen?: string;
   drawers: { path: string; summary?: string; type?: string; when?: string; topics?: string[]; entities?: string[]; error?: string }[];
   ref_count: number;
@@ -126,10 +128,45 @@ export function entityDetail(name: string, lifeRoot?: string) {
   return api<EntityDetail>(`/api/entity?${q.toString()}`);
 }
 
+export function recall(question: string, lifeRoot?: string, limit = 10) {
+  const q = new URLSearchParams({ q: question, limit: String(limit) });
+  if (lifeRoot) q.set("life_root", lifeRoot);
+  return api<{ ok: boolean; hits: { summary?: string; score?: number; type?: string; path?: string }[] }>(
+    `/api/recall?${q.toString()}`,
+  );
+}
+
 export function entityGraph(name: string, lifeRoot?: string) {
   const q = new URLSearchParams({ name });
   if (lifeRoot) q.set("life_root", lifeRoot);
   return api<EntityGraph>(`/api/entity-graph?${q.toString()}`);
+}
+
+export type DaemonHealth = {
+  ok: boolean;
+  service?: string;
+  version?: string;
+  life_root?: string;
+};
+
+export type BenchReport = {
+  ok: boolean;
+  avg_savings_pct?: number;
+  token_proxy_baseline_total?: number;
+  token_proxy_atlas_total?: number;
+  passed?: number;
+  cases?: number;
+  results?: { id: string; savings_pct: number; pass: boolean }[];
+  note?: string;
+};
+
+export function health() {
+  return api<DaemonHealth>("/api/health");
+}
+
+export function bench(project?: string) {
+  const q = project ? `?project=${encodeURIComponent(project)}` : "";
+  return api<BenchReport>(`/api/bench${q}`);
 }
 
 export function chat(messages: ChatMessage[], settings: Settings) {

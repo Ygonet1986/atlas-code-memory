@@ -1,0 +1,6 @@
+{
+  "id": "bench-core-engine",
+  "question": "Where is the core rendering engine loop?",
+  "expect_path_contains": ["src/core/engine.py"],
+  "min_savings_pct": 40
+}

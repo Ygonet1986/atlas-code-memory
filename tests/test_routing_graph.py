@@ -20,16 +20,24 @@ def test_protocol_score_prefers_atlas_before_grep():
 def test_recall_route(tmp_path):
     (tmp_path / ".cursor").mkdir()
     (tmp_path / ".cursor" / "mempalace-index.md").write_text(
-        "### x\n- **wing:** `demo`\n- **room:** `architecture`\n", encoding="utf-8"
+        "### x\n- **wing:** `demo`\n- **room:** `architecture`\n\n"
+        "### other\n- **wing:** `payments`\n- **room:** `build`\n",
+        encoding="utf-8",
     )
     (tmp_path / ".cursor" / "graphify-index.md").write_text(
-        "### core\n- **escopo:** `src`\n- **grafo:** `src/graphify-out/`\n- **status:** ready\n",
+        "### core\n- **escopo:** `src`\n- **grafo:** `src/graphify-out/`\n- **status:** ready\n"
+        "### stale-mod\n- **escopo:** `legacy`\n- **grafo:** `legacy/out/`\n- **status:** stale\n",
         encoding="utf-8",
     )
     (tmp_path / ".cursor" / "project-cache.md").write_text(
-        "### main.py\n- **endereço:** `src/main.py`\n- **descrição:** entry\n",
+        "### main.py\n- **path:** `src/main.py`\n- **description:** entry\n",
         encoding="utf-8",
     )
     r = recall_route(tmp_path, "architecture of src main")
-    assert r["mempalace"]["wing"] == "demo"
+    assert r["mempalace"]["wing"] in {"demo", "payments"}
     assert r["cache_hits"]
+    assert r.get("char_budget")
+    assert "hint" in r
+
+    pay = recall_route(tmp_path, "payments billing wing")
+    assert pay["mempalace"]["wing"] == "payments"

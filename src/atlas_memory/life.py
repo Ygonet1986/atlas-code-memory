@@ -410,48 +410,77 @@ def mindmap_graph(root: Path | None = None, *, period: str = "day") -> dict[str,
     }
 
 
-def wake(root: Path | None = None, *, hot_limit: int = 8) -> dict[str, Any]:
+def wake(
+    root: Path | None = None,
+    *,
+    hot_limit: int = 8,
+    char_budget: int = 3000,
+) -> dict[str, Any]:
     root = life_root(root)
     keys = period_keys()
     day_drawers = _hot_drawers(root, period_dir(root, "day", keys["day"]), limit=hot_limit)
-    week_drawers = _read_drawers_in(period_dir(root, "week", keys["week"]), limit=3)
-    people = _read_drawers_in(drawers_base(root) / "people", limit=5)
+    week_drawers = _hot_drawers(root, period_dir(root, "week", keys["week"]), limit=3)
+    people = _hot_drawers(root, drawers_base(root) / "people", limit=5)
     session = load_session_init(root)
+
+    # Compact prompt under char_budget (token economy)
     prompt_lines = [
         f"# Atlas Life Wake ({keys['day']})",
         f"wing: life-{keys['year']}",
         f"period: day={keys['day']} week={keys['week']} month={keys['month']}",
         "",
     ]
+    used = sum(len(x) + 1 for x in prompt_lines)
     if session:
         prompt_lines.append("## Session init (resume here)")
+        summary = str(session.get("summary") or "-")[:240]
         prompt_lines.append(f"prepared_at: {session.get('prepared_at', '-')}")
-        prompt_lines.append(f"summary: {session.get('summary', '-')}")
+        prompt_lines.append(f"summary: {summary}")
+        used += 80 + len(summary)
         if session.get("greeting"):
             prompt_lines.append(f"greeting: {session['greeting']}")
         topics = session.get("topics") or []
         if topics:
-            prompt_lines.append("topics: " + ", ".join(str(t) for t in topics))
-        for m in session.get("last_messages") or []:
-            prompt_lines.append(f"- ({m.get('role')}) {m.get('content')}")
+            prompt_lines.append("topics: " + ", ".join(str(t) for t in topics[:8]))
+        for m in (session.get("last_messages") or [])[-4:]:
+            line = f"- ({m.get('role')}) {str(m.get('content') or '')[:160]}"
+            if used + len(line) > char_budget * 0.55:
+                break
+            prompt_lines.append(line)
+            used += len(line) + 1
         prompt_lines.append("")
     prompt_lines.append("## Hot day drawers")
     if not day_drawers:
         prompt_lines.append("(none yet)")
     for d in day_drawers:
-        prompt_lines.append(f"- [{d.get('type','?')}] {d.get('summary','')}")
-        if d.get("why") and d["why"] not in {"-", ""}:
-            prompt_lines.append(f"  why: {d['why']}")
-    if week_drawers:
+        line = f"- [{d.get('type', '?')}] {d.get('summary', '')}"
+        why = d.get("why") if d.get("why") not in {None, "-", ""} else ""
+        extra = f"\n  why: {why}" if why else ""
+        if used + len(line) + len(extra) > char_budget:
+            prompt_lines.append("- … (budget)")
+            break
+        prompt_lines.append(line)
+        if extra:
+            prompt_lines.append(extra.strip("\n"))
+        used += len(line) + len(extra) + 1
+    if week_drawers and used < char_budget:
         prompt_lines.append("")
         prompt_lines.append("## Week rollup")
         for d in week_drawers:
-            prompt_lines.append(f"- {d.get('summary','')}")
-    if people:
+            line = f"- {d.get('summary', '')}"
+            if used + len(line) > char_budget:
+                break
+            prompt_lines.append(line)
+            used += len(line) + 1
+    if people and used < char_budget:
         prompt_lines.append("")
         prompt_lines.append("## People")
         for d in people:
-            prompt_lines.append(f"- {d.get('summary','')}")
+            line = f"- {d.get('summary', '')}"
+            if used + len(line) > char_budget:
+                break
+            prompt_lines.append(line)
+            used += len(line) + 1
     prompt = "\n".join(prompt_lines) + "\n"
     return {
         "ok": True,
@@ -463,6 +492,8 @@ def wake(root: Path | None = None, *, hot_limit: int = 8) -> dict[str, Any]:
         "people": people,
         "session_init": session,
         "prompt": prompt,
+        "char_budget": char_budget,
+        "prompt_chars": len(prompt),
     }
 
 
@@ -537,11 +568,83 @@ def remember(
     return result
 
 
+def _iter_drawer_files(ddir: Path) -> list[Path]:
+    if not ddir.exists():
+        return []
+    if "entities" in ddir.parts and ddir.name == "entities":
+        return list(ddir.rglob("*.drawer.md"))
+    return list(ddir.glob("*.drawer.md"))
+
+
+def _recall_search_dirs(root: Path, prefer: str, keys: dict[str, str]) -> list[Path]:
+    """Dirs to scan for recall, prefer first then broader fallbacks."""
+    base = drawers_base(root)
+    dirs: list[Path] = []
+    seen: set[str] = set()
+
+    def add(p: Path) -> None:
+        key = str(p)
+        if key not in seen:
+            seen.add(key)
+            dirs.append(p)
+
+    if prefer == "people":
+        add(base / "people")
+    elif prefer in keys:
+        add(period_dir(root, prefer, keys[prefer]))
+    add(period_dir(root, "day", keys["day"]))
+    add(period_dir(root, "week", keys["week"]))
+    add(period_dir(root, "month", keys["month"]))
+    add(base / "general")
+    add(base / "people")
+    ent = base / "entities"
+    if ent.exists():
+        add(ent)
+    day_root = base / "day"
+    if day_root.exists():
+        for ddir in sorted(
+            (p for p in day_root.iterdir() if p.is_dir()),
+            key=lambda p: p.name,
+            reverse=True,
+        )[:14]:
+            add(ddir)
+    return dirs
+
+
+def _entity_token_boost(root: Path, tokens: list[str], d: dict[str, Any]) -> float:
+    """Boost score when question tokens match drawer entities or entity index."""
+    boost = 0.0
+    ents = [str(e).lower() for e in (d.get("entities") or [])]
+    for t in tokens:
+        for e in ents:
+            if t in e or e in t:
+                boost += 4.0
+                break
+    idx = _load_entity_index(root)
+    path = d.get("path", "")
+    try:
+        rel = Path(path).resolve().relative_to(root.resolve()).as_posix()
+    except (ValueError, OSError):
+        rel = str(path).replace("\\", "/")
+    for slug, info in (idx.get("entities") or {}).items():
+        names = [slug, (info.get("name") or "").lower()]
+        names.extend(str(a).lower() for a in (info.get("aliases") or []))
+        name_hit = any(any(t in n or n in t for n in names if len(n) > 1) for t in tokens)
+        if not name_hit:
+            continue
+        refs = info.get("refs") or []
+        if any(rel.endswith(r) or r in rel for r in refs) or any(
+            any(t in e for e in ents) for t in tokens
+        ):
+            boost += 3.0
+            break
+    return boost
+
+
 def recall(root: Path | None, question: str, *, limit: int = 10) -> dict[str, Any]:
     root = life_root(root)
     q = question.lower()
     keys = period_keys()
-    # Prefer temporal rooms from question
     prefer = "day"
     if any(w in q for w in ("year", "anual", "ano")):
         prefer = "year"
@@ -552,32 +655,131 @@ def recall(root: Path | None, question: str, *, limit: int = 10) -> dict[str, An
     elif any(w in q for w in ("people", "pessoa", "who", "quem")):
         prefer = "people"
 
-    search_dirs: list[Path] = []
-    if prefer == "people":
-        search_dirs.append(drawers_base(root) / "people")
-    else:
-        search_dirs.append(period_dir(root, prefer, keys[prefer] if prefer in keys else keys["day"]))
-        search_dirs.append(period_dir(root, "day", keys["day"]))
-        search_dirs.append(drawers_base(root) / "general")
+    tokens = [t for t in re.findall(r"[a-z0-9_]+", q) if len(t) > 2]
+    # Avoid matching every drawer via [type:memory] / frontmatter noise
+    stop = {
+        "memory",
+        "event",
+        "person",
+        "goal",
+        "preference",
+        "lesson",
+        "decision",
+        "type",
+        "status",
+        "active",
+        "summary",
+        "when",
+        "period",
+        "room",
+        "wing",
+        "topics",
+        "files",
+        "branch",
+        "commit",
+        "drawer",
+        "the",
+        "and",
+        "for",
+    }
+    tokens = [t for t in tokens if t not in stop]
+    if not tokens:
+        return {
+            "ok": True,
+            "question": question,
+            "prefer_period": prefer,
+            "keys": keys,
+            "wing": f"life-{keys['year']}",
+            "hits": [],
+            "route": ["mempalace-index", "life drawers", "MindMap (one)", "project-cache"],
+        }
+
+    import time
+
+    now_ts = time.time()
+    branch = _get_current_branch(root)
+    access_counts = _get_access_counts(root)
+    entity_recency = _get_entity_recency(root)
+    today = date.today().isoformat()
+
+    def _field_blob(d: Any) -> str:
+        return " ".join(
+            [
+                str(getattr(d, "summary", "") or ""),
+                str(getattr(d, "why", "") or ""),
+                " ".join(getattr(d, "topics", None) or []),
+                " ".join(getattr(d, "entities", None) or []),
+                str(getattr(d, "wing", "") or ""),
+                str(getattr(d, "room", "") or ""),
+            ]
+        ).lower()
 
     hits: list[dict[str, Any]] = []
-    tokens = [t for t in re.findall(r"[a-z0-9_]+", q) if len(t) > 2]
-    for ddir in search_dirs:
-        if not ddir.exists():
-            continue
-        for f in ddir.rglob("*.drawer.md") if prefer != "day" else ddir.glob("*.drawer.md"):
+    seen_paths: set[str] = set()
+    for ddir in _recall_search_dirs(root, prefer, keys):
+        for f in _iter_drawer_files(ddir):
+            sp = str(f.resolve())
+            if sp in seen_paths:
+                continue
+            seen_paths.add(sp)
             try:
                 text = f.read_text(encoding="utf-8", errors="replace")
                 d = parse_drawer_markdown(text)
-                blob = text.lower()
-                score = sum(1 for t in tokens if t in blob)
-                if score or prefer == "day":
-                    hits.append({"path": str(f), "score": score, **d.to_dict()})
+                blob = _field_blob(d)
+                token_score = float(sum(1 for t in tokens if t in blob))
+                row = {"path": sp, "mtime": f.stat().st_mtime, **d.to_dict()}
+                ent_boost = _entity_token_boost(root, tokens, row)
+                if token_score <= 0 and ent_boost <= 0:
+                    continue
+                hot = _score_drawer(
+                    row,
+                    now_ts=now_ts,
+                    branch=branch,
+                    access_counts=access_counts,
+                    entity_recency=entity_recency,
+                    today=today,
+                )
+                period_boost = 2.0 if (d.period or d.room) == prefer else 0.0
+                score = max(token_score, 0.25) * 10.0 + hot * 0.15 + ent_boost + period_boost
+                hits.append({**row, "score": round(score, 3)})
             except Exception:
                 continue
+
+    # Entity-index refs when question matches entity names/aliases
+    idx = _load_entity_index(root)
+    for slug, info in (idx.get("entities") or {}).items():
+        names = [slug, (info.get("name") or "").lower()]
+        names.extend(str(a).lower() for a in (info.get("aliases") or []))
+        if not any(any(t in n or n in t for n in names if len(n) > 1) for t in tokens):
+            continue
+        for rel in info.get("refs") or []:
+            p = root / rel
+            if not p.exists() or not str(p).endswith(".drawer.md"):
+                continue
+            sp = str(p.resolve())
+            if sp in seen_paths:
+                continue
+            seen_paths.add(sp)
+            try:
+                text = p.read_text(encoding="utf-8", errors="replace")
+                d = parse_drawer_markdown(text)
+                row = {"path": sp, "mtime": p.stat().st_mtime, **d.to_dict()}
+                hot = _score_drawer(
+                    row,
+                    now_ts=now_ts,
+                    branch=branch,
+                    access_counts=access_counts,
+                    entity_recency=entity_recency,
+                    today=today,
+                )
+                hits.append({**row, "score": round(15.0 + hot * 0.15, 3)})
+            except Exception:
+                continue
+
     hits.sort(key=lambda x: (-x.get("score", 0), x.get("summary", "")))
     for h in hits[:limit]:
         metrics.record(root, "life_drawer_access", path=h.get("path", ""))
+        h.pop("mtime", None)
     return {
         "ok": True,
         "question": question,
@@ -852,8 +1054,8 @@ def entity_list(root: Path | None = None) -> dict[str, Any]:
 def entity_detail(root: Path | None = None, name: str = "") -> dict[str, Any]:
     """Get all drawers linked to an entity."""
     root = life_root(root)
-    slug = _entity_slug(name)
     idx = _load_entity_index(root)
+    slug = _resolve_entity_slug(idx, name) or _entity_slug(name)
     info = (idx.get("entities") or {}).get(slug)
     if not info:
         return {"ok": False, "error": f"entity {name!r} not found", "slug": slug}
@@ -870,12 +1072,13 @@ def entity_detail(root: Path | None = None, name: str = "") -> dict[str, Any]:
         except Exception:
             drawers.append({"path": rel, "error": "parse_failed"})
     # Also read .ref.md files in entity dir for summary
-    edir = entity_dir(root, name)
+    edir = entities_dir(root) / slug
     ref_files = sorted(edir.glob("*.ref.md")) if edir.exists() else []
     return {
         "ok": True,
         "slug": slug,
         "name": info.get("name") or name,
+        "aliases": info.get("aliases") or [],
         "last_seen": info.get("last_seen"),
         "drawers": drawers,
         "ref_count": len(ref_files),
@@ -886,10 +1089,10 @@ def entity_detail(root: Path | None = None, name: str = "") -> dict[str, Any]:
 def entity_graph(root: Path | None = None, name: str = "") -> dict[str, Any]:
     """Build a Mind Map graph for a single entity."""
     root = life_root(root)
-    slug = _entity_slug(name)
     detail = entity_detail(root, name)
     if not detail.get("ok"):
         return detail
+    slug = detail.get("slug") or _entity_slug(name)
     nodes: list[dict[str, Any]] = []
     edges: list[dict[str, str]] = []
     # Central entity node

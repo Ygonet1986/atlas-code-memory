@@ -1,9 +1,8 @@
-"""Windows Startup helper for Atlas Chat."""
+"""Windows Startup helper for Atlas daemon / Chat."""
 
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -29,7 +28,6 @@ def install_autostart(*, url: str = "http://127.0.0.1:8765/") -> dict[str, Any]:
         return {"ok": False, "error": f"missing {cmd}"}
     startup = windows_startup_folder()
     startup.mkdir(parents=True, exist_ok=True)
-    # Prefer .cmd in Startup (Windows runs it reliably at login)
     dest_cmd = startup / "AtlasChat.cmd"
     dest_cmd.write_text(
         f'@echo off\r\n'
@@ -37,13 +35,20 @@ def install_autostart(*, url: str = "http://127.0.0.1:8765/") -> dict[str, Any]:
         f'-File "{script}" -OpenUrl "{url}"\r\n',
         encoding="ascii",
     )
-    # Remove old .lnk if present
     old_lnk = startup / "AtlasChat.lnk"
     if old_lnk.exists():
         old_lnk.unlink()
+    daemon_cmd = startup / "AtlasDaemon.cmd"
+    atlas_exe = sys.executable
+    daemon_cmd.write_text(
+        f'@echo off\r\n'
+        f'"{atlas_exe}" -m atlas_memory.cli daemon --host 127.0.0.1 --port 8765\r\n',
+        encoding="ascii",
+    )
     return {
         "ok": dest_cmd.exists(),
         "shortcut": str(dest_cmd),
+        "daemon_shortcut": str(daemon_cmd),
         "script": str(script),
         "stderr": "",
     }
@@ -52,7 +57,7 @@ def install_autostart(*, url: str = "http://127.0.0.1:8765/") -> dict[str, Any]:
 def uninstall_autostart() -> dict[str, Any]:
     startup = windows_startup_folder()
     removed: list[str] = []
-    for name in ("AtlasChat.lnk", "AtlasChat.cmd"):
+    for name in ("AtlasChat.lnk", "AtlasChat.cmd", "AtlasDaemon.cmd"):
         path = startup / name
         if path.exists():
             path.unlink()

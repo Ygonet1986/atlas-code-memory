@@ -1,0 +1,6 @@
+{
+  "id": "bench-login-auth",
+  "question": "Where is user login authentication implemented?",
+  "expect_path_contains": ["src/auth/login.py"],
+  "min_savings_pct": 40
+}

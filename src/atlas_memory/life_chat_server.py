@@ -10,7 +10,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from . import life as life_mod
 
@@ -104,6 +104,21 @@ def extract_memories(content: str) -> tuple[str, list[dict[str, Any]]]:
     return clean.strip(), memories
 
 
+def _root_from_query(params: dict[str, str], default: Path | None) -> Path | None:
+    raw = params.get("life_root") or ""
+    if not raw:
+        return default
+    return Path(unquote(raw)).expanduser()
+
+
+def _query_params(path_with_qs: str) -> dict[str, str]:
+    qs = urlparse(path_with_qs).query
+    if not qs:
+        return {}
+    parsed = parse_qs(qs, keep_blank_values=False)
+    return {k: v[0] for k, v in parsed.items() if v}
+
+
 def make_handler(life_root: Path | None, static_dir: Path | None) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt: str, *args: Any) -> None:
@@ -114,35 +129,40 @@ def make_handler(life_root: Path | None, static_dir: Path | None) -> type[BaseHT
 
         def do_GET(self) -> None:  # noqa: N802
             path = urlparse(self.path).path
-            qs = urlparse(self.path).query
-            params = dict(p.split("=", 1) for p in qs.split("&") if "=" in p) if qs else {}
+            params = _query_params(self.path)
+            root = _root_from_query(params, life_root)
             if path == "/api/health":
                 _json_response(self, 200, {"ok": True, "service": "atlas-chat"})
                 return
             if path == "/api/wake":
-                _json_response(self, 200, life_mod.wake(life_root))
+                _json_response(self, 200, life_mod.wake(root))
                 return
             if path == "/api/mindmap":
                 period = params.get("period") or "day"
-                _json_response(self, 200, life_mod.mindmap_graph(life_root, period=period))
+                _json_response(self, 200, life_mod.mindmap_graph(root, period=period))
                 return
             if path == "/api/session-init":
-                data = life_mod.load_session_init(life_root)
+                data = life_mod.load_session_init(root)
                 _json_response(self, 200, {"ok": True, "init": data})
                 return
             if path == "/api/entities":
-                _json_response(self, 200, life_mod.entity_list(life_root))
+                _json_response(self, 200, life_mod.entity_list(root))
                 return
             if path == "/api/entity":
                 name = params.get("name") or ""
-                _json_response(self, 200, life_mod.entity_detail(life_root, name=name))
+                _json_response(self, 200, life_mod.entity_detail(root, name=unquote(name)))
                 return
             if path == "/api/entity-relations":
-                _json_response(self, 200, life_mod.entity_relations(life_root))
+                _json_response(self, 200, life_mod.entity_relations(root))
                 return
             if path == "/api/entity-graph":
                 name = params.get("name") or ""
-                _json_response(self, 200, life_mod.entity_graph(life_root, name=name))
+                _json_response(self, 200, life_mod.entity_graph(root, name=unquote(name)))
+                return
+            if path == "/api/recall":
+                question = unquote(params.get("q") or params.get("question") or "")
+                limit = int(params.get("limit") or 10)
+                _json_response(self, 200, life_mod.recall(root, question, limit=limit))
                 return
             if static_dir and static_dir.exists():
                 rel = path.lstrip("/") or "index.html"
@@ -235,19 +255,24 @@ def make_handler(life_root: Path | None, static_dir: Path | None) -> type[BaseHT
                 git = None
                 if auto_push and any(s.get("ok") for s in saved):
                     git = life_mod.life_sync(root, message=None)
-                # Soft session init after each turn (resume next load)
-                topics_acc: list[str] = []
-                for mem in memories:
-                    for t in mem.get("topics") or []:
-                        if t and t not in topics_acc:
-                            topics_acc.append(str(t))
-                life_mod.prepare_session_init(
-                    root,
-                    summary="",
-                    topics=topics_acc,
-                    last_messages=history[-6:] + [{"role": "assistant", "content": content[:240]}],
-                    push_after=False,
-                )
+                # Only refresh session-init when durable memories were saved this turn
+                # (explicit End & init / session-end still owns curated summaries).
+                if any(s.get("ok") for s in saved):
+                    topics_acc: list[str] = []
+                    summaries: list[str] = []
+                    for mem in memories:
+                        for t in mem.get("topics") or []:
+                            if t and t not in topics_acc:
+                                topics_acc.append(str(t))
+                        if mem.get("summary"):
+                            summaries.append(str(mem["summary"]))
+                    life_mod.prepare_session_init(
+                        root,
+                        summary="; ".join(summaries[:3]) if summaries else "",
+                        topics=topics_acc,
+                        last_messages=history[-6:] + [{"role": "assistant", "content": content[:240]}],
+                        push_after=False,
+                    )
                 _json_response(
                     self,
                     200,

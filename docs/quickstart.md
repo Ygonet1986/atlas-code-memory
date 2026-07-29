@@ -17,9 +17,34 @@ cd ~/code/my-app
 atlas init --global-rule
 atlas onboard
 atlas doctor
+atlas connect --editor cursor   # Atlas = Cursor default where/remember layer
 ```
 
-Open the folder in Cursor. Ask: “What should we check in Atlas before editing?”
+Open the folder in Cursor, **reload MCP**, then ask: “What should we check in Atlas before editing?”
+
+## Token savings check
+
+```bash
+atlas bench --fixture
+# or against this repo after indexes exist:
+atlas bench -C .
+```
+
+## Local daemon (any AI editor)
+
+```bash
+atlas daemon
+# HTTP: http://127.0.0.1:8765/api/route?q=...&project=...
+```
+
+## Personal memory (Life)
+
+```bash
+atlas life init
+atlas life wake
+```
+
+See [life.md](life.md).
 
 ## Migrate an existing project
 

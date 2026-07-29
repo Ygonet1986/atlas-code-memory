@@ -6,7 +6,9 @@ import sys
 from pathlib import Path
 
 from . import __version__, metrics
+from .commands_bench import format_bench_markdown, run_bench
 from .commands_checkpoint import file_checkpoint
+from .commands_connect import connect_editor
 from .commands_doctor import doctor
 from .commands_eval import run_eval
 from .commands_graph import add_graph, list_graphs, set_graph_status
@@ -141,6 +143,75 @@ def cmd_eval(args: argparse.Namespace) -> int:
         print(f"  {flag} {r['id']}: [{r['expect_layer']}] {r['question']}")
     print(f"{passed}/{len(results)} passed")
     return 0 if passed == len(results) else 1
+
+
+def cmd_bench(args: argparse.Namespace) -> int:
+    from .commands_bench import default_fixture_root
+
+    if getattr(args, "use_fixture", False) or not args.project:
+        project = default_fixture_root()
+    else:
+        project = Path(args.project).resolve()
+    cases = Path(args.cases) if args.cases else None
+    report = run_bench(project, cases_dir=cases, min_avg_savings=args.min_savings)
+    if args.json:
+        print(json.dumps(report, indent=2))
+    else:
+        print(format_bench_markdown(report))
+    return 0 if report.get("ok") else 1
+
+
+def cmd_daemon(args: argparse.Namespace) -> int:
+    from .daemon import serve_daemon
+    from .paths import repo_root_from_pkg
+
+    static = Path(args.static).resolve() if args.static else None
+    if static is None and getattr(args, "with_ui", False):
+        candidate = repo_root_from_pkg() / "apps" / "atlas-chat" / "dist"
+        if candidate.is_dir():
+            static = candidate
+    life_root = Path(args.life_root).expanduser() if args.life_root else None
+    project = Path(args.project).resolve() if args.project else None
+    serve_daemon(
+        host=args.host,
+        port=args.port,
+        life_root=life_root,
+        default_project=project,
+        static_dir=static,
+        open_browser=bool(args.open),
+    )
+    return 0
+
+
+def cmd_connect(args: argparse.Namespace) -> int:
+    global_install: bool | None = None
+    if getattr(args, "no_global", False):
+        global_install = False
+    elif getattr(args, "global_install", False):
+        global_install = True
+    # else None → cursor defaults to True inside connect_editor
+    result = connect_editor(
+        args.editor,
+        project=Path(args.project).resolve() if args.project else Path("."),
+        write=not args.dry_run,
+        global_install=global_install,
+    )
+    print(json.dumps(result, indent=2) if args.json else _fmt_connect(result))
+    return 0 if result.get("ok") else 1
+
+
+def _fmt_connect(result: dict) -> str:
+    lines = [
+        f"OK connect editor={result.get('editor')} project={result.get('project')}",
+        f"  role: {result.get('role')}",
+    ]
+    if result.get("global_install"):
+        lines.append("  global: ~/.cursor rules + MCP + skill (Cursor default layer)")
+    for a in result.get("actions") or []:
+        lines.append(f"  {a}")
+    if result.get("hint"):
+        lines.append(f"  hint: {result['hint']}")
+    return "\n".join(lines)
 
 
 def cmd_hooks(args: argparse.Namespace) -> int:
@@ -291,6 +362,22 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--transcript", help="path or - for protocol scoring")
     s.set_defaults(func=cmd_eval)
 
+    s = sub.add_parser(
+        "bench",
+        help="A/B token-proxy bench: blind grep vs Atlas route (proves token savings)",
+    )
+    s.add_argument(
+        "-C",
+        "--project",
+        default=None,
+        help="project root (default: bundled eval/fixture-monorepo)",
+    )
+    s.add_argument("--cases", help="directory of bench-*.json cases")
+    s.add_argument("--min-savings", type=float, default=40.0, help="required average savings %%")
+    s.add_argument("--json", action="store_true")
+    s.add_argument("--fixture", dest="use_fixture", action="store_true", help="force bundled fixture")
+    s.set_defaults(func=cmd_bench)
+
     s = sub.add_parser("hooks", help="git hook helpers")
     add_project(s)
     s.add_argument("hooks_cmd", choices=["install", "mark-stale"])
@@ -356,6 +443,37 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("mcp", help="run Atlas MCP server on stdio")
     s.set_defaults(func=cmd_mcp)
+
+    s = sub.add_parser("daemon", help="local HTTP daemon (route/life/bench) for any AI editor")
+    s.add_argument("--host", default="127.0.0.1")
+    s.add_argument("--port", type=int, default=8765)
+    s.add_argument("--life-root", default=None)
+    s.add_argument("-C", "--project", default=None, help="default project for /api/route")
+    s.add_argument("--static", default=None)
+    s.add_argument("--with-ui", action="store_true")
+    s.add_argument("--open", action="store_true")
+    s.set_defaults(func=cmd_daemon)
+
+    s = sub.add_parser(
+        "connect",
+        help="make Atlas the editor's where-to-look / what-to-remember layer (Cursor: global by default)",
+    )
+    s.add_argument("--editor", default="cursor", choices=["cursor", "claude", "claude-code", "windsurf", "generic"])
+    s.add_argument("-C", "--project", default=".")
+    s.add_argument(
+        "--global",
+        dest="global_install",
+        action="store_true",
+        help="install ~/.cursor rules+MCP+skill (default for --editor cursor)",
+    )
+    s.add_argument(
+        "--no-global",
+        action="store_true",
+        help="only write project .cursor/ (skip user-level Cursor install)",
+    )
+    s.add_argument("--dry-run", action="store_true")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_connect)
 
     register_life_parser(sub)
 

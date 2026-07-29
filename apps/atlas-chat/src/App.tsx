@@ -1,11 +1,16 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
+  BenchReport,
   ChatMessage,
+  bench as fetchBench,
   chat,
   entities as fetchEntities,
+  EntityDetail,
   EntityGraph,
+  entityDetail as fetchEntityDetail,
   entityGraph as fetchEntityGraph,
   EntitySummary,
+  health,
   loadSettings,
   mindmap,
   MindmapGraph,
@@ -17,7 +22,7 @@ import {
 } from "./api";
 
 type SyncState = "ok" | "busy" | "err";
-type Tab = "chat" | "mindmap" | "entities";
+type Tab = "chat" | "mindmap" | "entities" | "savings";
 
 export default function App() {
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
@@ -33,6 +38,8 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [graph, setGraph] = useState<MindmapGraph | null>(null);
   const [mapPeriod, setMapPeriod] = useState("day");
+  const [benchReport, setBenchReport] = useState<BenchReport | null>(null);
+  const [daemonLabel, setDaemonLabel] = useState("daemon…");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,9 +47,21 @@ export default function App() {
     (async () => {
       setSync({ state: "busy", label: "pulling…" });
       try {
+        try {
+          const h = await health();
+          if (!cancelled) {
+            setDaemonLabel(
+              h.ok
+                ? `daemon ${h.version || h.service || "up"}`
+                : "daemon offline",
+            );
+          }
+        } catch {
+          if (!cancelled) setDaemonLabel("daemon offline — run atlas daemon");
+        }
         await pull(settings.lifeRoot || undefined);
         if (cancelled) return;
-        const w = await wake();
+        const w = await wake(settings.lifeRoot || undefined);
         if (cancelled) return;
         if (w.session_init?.summary) {
           setGreeting(
@@ -180,7 +199,15 @@ export default function App() {
             >
               Entities
             </button>
+            <button
+              type="button"
+              className={tab === "savings" ? "tab active" : "tab"}
+              onClick={() => setTab("savings")}
+            >
+              Savings
+            </button>
           </nav>
+          <p className="sub" style={{ marginTop: "0.35rem" }}>{daemonLabel}</p>
         </div>
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
           <div className="sync" data-state={sync.state}>
@@ -239,8 +266,30 @@ export default function App() {
           period={mapPeriod}
           onPeriod={setMapPeriod}
         />
-      ) : (
+      ) : tab === "entities" ? (
         <EntitiesView lifeRoot={settings.lifeRoot} />
+      ) : (
+        <SavingsView
+          report={benchReport}
+          onRun={async () => {
+            setSync({ state: "busy", label: "bench…" });
+            try {
+              const r = await fetchBench();
+              setBenchReport(r);
+              setSync({
+                state: r.ok ? "ok" : "err",
+                label: r.ok
+                  ? `saved ~${r.avg_savings_pct}% tokens`
+                  : "bench failed",
+              });
+            } catch (e) {
+              setSync({
+                state: "err",
+                label: e instanceof Error ? e.message : "bench failed",
+              });
+            }
+          }}
+        />
       )}
 
       {showSettings && (
@@ -351,10 +400,51 @@ function layoutNodes(graph: MindmapGraph | null) {
   return { w, h, pos };
 }
 
+function SavingsView({
+  report,
+  onRun,
+}: {
+  report: BenchReport | null;
+  onRun: () => void | Promise<void>;
+}) {
+  return (
+    <div className="mindmap" style={{ padding: "1rem" }}>
+      <h2 style={{ marginTop: 0 }}>Token savings</h2>
+      <p className="sub">
+        A/B proxy: blind grep vs Atlas route (<code>chars/4</code>). Proves orientation cuts exploration cost.
+      </p>
+      <button type="button" className="gear" onClick={() => void onRun()}>
+        Run atlas bench
+      </button>
+      {!report && <p className="sub">No report yet.</p>}
+      {report && (
+        <div style={{ marginTop: "1rem" }}>
+          <p>
+            Average savings: <strong>{report.avg_savings_pct ?? "—"}%</strong>
+            {" · "}
+            {report.token_proxy_baseline_total} → {report.token_proxy_atlas_total} tokens
+            {" · "}
+            {report.passed}/{report.cases} cases
+          </p>
+          <ul style={{ listStyle: "none", padding: 0 }}>
+            {(report.results || []).map((r) => (
+              <li key={r.id} style={{ padding: "0.35rem 0", borderBottom: "1px solid #2a2a2a" }}>
+                {r.pass ? "PASS" : "FAIL"} {r.id}: {r.savings_pct}%
+              </li>
+            ))}
+          </ul>
+          {report.note && <p className="sub">{report.note}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EntitiesView({ lifeRoot }: { lifeRoot: string }) {
   const [list, setList] = useState<EntitySummary[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<EntityGraph | null>(null);
+  const [drawers, setDrawers] = useState<EntityDetail | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -365,10 +455,20 @@ function EntitiesView({ lifeRoot }: { lifeRoot: string }) {
   }, [lifeRoot]);
 
   useEffect(() => {
-    if (!selected) { setDetail(null); return; }
+    if (!selected) {
+      setDetail(null);
+      setDrawers(null);
+      return;
+    }
     let cancelled = false;
-    fetchEntityGraph(selected, lifeRoot || undefined).then((r) => {
-      if (!cancelled) setDetail(r);
+    Promise.all([
+      fetchEntityGraph(selected, lifeRoot || undefined),
+      fetchEntityDetail(selected, lifeRoot || undefined),
+    ]).then(([g, d]) => {
+      if (!cancelled) {
+        setDetail(g);
+        setDrawers(d);
+      }
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [selected, lifeRoot]);
@@ -396,6 +496,26 @@ function EntitiesView({ lifeRoot }: { lifeRoot: string }) {
               {e.last_seen && <span style={{ color: "#888", marginLeft: "0.5rem" }}>last: {e.last_seen}</span>}
             </div>
           ))}
+        </div>
+      )}
+      {selected && drawers && (
+        <div style={{ padding: "0.75rem 1rem" }}>
+          <p className="sub">
+            {drawers.name}
+            {drawers.aliases && drawers.aliases.length > 0
+              ? ` · aliases: ${drawers.aliases.join(", ")}`
+              : ""}
+            {" · "}
+            {drawers.drawers?.length || 0} drawers
+          </p>
+          <ul style={{ listStyle: "none", padding: 0, margin: "0.5rem 0 1rem" }}>
+            {(drawers.drawers || []).map((d, i) => (
+              <li key={i} style={{ padding: "0.35rem 0", borderBottom: "1px solid #2a2a2a" }}>
+                <strong>[{d.type || "?"}]</strong> {d.summary || d.error || d.path}
+                {d.when && <span style={{ color: "#888", marginLeft: "0.5rem" }}>{d.when}</span>}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
       {selected && detail && layout && (

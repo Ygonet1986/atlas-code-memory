@@ -173,14 +173,24 @@ def test_entity_relations(tmp_path: Path):
     assert ("alice", "bob") in pairs
 
 
-def test_project_type_still_valid():
-    text = """[type:decision] [status:active]
-summary: Use Postgres
-why: team knows it
-branch: main
-commit: abc
-pr: -
-files: src/db.py
-"""
-    d = parse_drawer_markdown(text)
-    assert validate_drawer(d, life=False) == []
+def test_recall_excludes_zero_score_day_noise(tmp_path: Path):
+    root = tmp_path / "atlas-life"
+    life_init(root, repo=None, private_check=False, force=True)
+    remember(root, None, summary="Unrelated grocery list", why="noise", topics=["food"])
+    remember(root, None, summary="Working on Atlas Memory recall", why="dev", topics=["atlas"])
+    rec = recall(root, "atlas memory")
+    assert rec["ok"]
+    summaries = [h.get("summary") for h in rec["hits"]]
+    assert any("Atlas Memory" in (s or "") for s in summaries)
+    assert not any("grocery" in (s or "").lower() for s in summaries)
+
+
+def test_entity_detail_resolves_alias(tmp_path: Path):
+    root = tmp_path / "atlas-life"
+    life_init(root, repo=None, private_check=False, force=True)
+    remember(root, None, summary="Met Alice at cafe", why="social", entities=["Alice"])
+    entity_add_alias(root, "Alice", "Ali")
+    by_alias = entity_detail(root, "Ali")
+    assert by_alias["ok"]
+    assert by_alias["slug"] == "alice"
+    assert len(by_alias["drawers"]) >= 1

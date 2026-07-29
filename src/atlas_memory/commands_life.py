@@ -51,6 +51,7 @@ def cmd_life(args: argparse.Namespace) -> int:
             result = life_mod.remember(root, text, push_after=args.push)
         else:
             summary = args.summary or (args.text if args.text and not args.text.startswith("[type:") else None)
+            entities = [e.strip() for e in (args.entities or "").split(",") if e.strip()] or None
             result = life_mod.remember(
                 root,
                 None,
@@ -58,6 +59,7 @@ def cmd_life(args: argparse.Namespace) -> int:
                 summary=summary,
                 why=args.why or "",
                 topics=topics,
+                entities=entities,
                 room=args.room,
                 period=args.period,
                 when=args.when,
@@ -232,6 +234,11 @@ def register_life_parser(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--type", default="memory", choices=sorted(LIFE_DRAWER_TYPES))
     p.add_argument("--why", default="")
     p.add_argument("--topics", default="")
+    p.add_argument(
+        "--entities",
+        default="",
+        help="comma-separated entity names (people, places, concepts)",
+    )
     p.add_argument("--room", default="day", choices=list(LIFE_ROOMS))
     p.add_argument("--period", default="day", choices=["day", "week", "month", "year"])
     p.add_argument("--when", default=None)

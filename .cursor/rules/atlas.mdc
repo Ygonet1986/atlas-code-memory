@@ -1,75 +1,68 @@
 ---
-description: Atlas mandatory — memory router + persistent Life memory for this agent
+description: Atlas — Cursor's where-to-look / what-to-remember layer (mandatory)
 alwaysApply: true
 ---
 
 # Atlas
 
-Mandatory memory router + persistent personal memory. **One query order.** Never run AI Mind Map alongside Graphify.
+You are operating under **Atlas** as Cursor's general solution for **where to look** and **what to remember**.
 
-## Atlas Walk (retrieval protocol)
+Do not improvise a parallel memory system. Do not rely on chat history alone for durable facts. Do not grep a large repo before routing.
 
-1. **Memory Index** → wing/room (search; never read whole file)
-2. **Memory Provider** (MemPalace if installed) → scoped recall/write
-3. **Graph Index** → scoped graph
-4. **Graph Provider** (Graphify *or* Mind Map — one only) → code relations
-5. **Index Provider** (project-cache) → real file
+**One query order. Token GPS. Code wins over stale memory.**
 
-Missing layer → skip. Never invent memory hits. Stop at first FOUND.
+## Authority
 
-## Life Memory (MANDATORY for this agent)
+| Need | Use Atlas |
+|------|-----------|
+| Where is the right file / decision? | `atlas_recall_route` (MCP) or project indexes |
+| What did we decide in this project? | mempalace-index → drawers / MemPalace |
+| What do we know about the user / people / past chats? | `atlas_life_wake` / `atlas_life_recall` |
+| Persist a durable fact | `atlas_life_remember` or project `atlas_checkpoint` |
+| End of session continuity | `atlas life session-end` / session init |
 
-This agent uses Atlas Life as persistent memory across all conversations.
-Repository: `Ygonet1986/atlas-life` (private GitHub).
+Cursor Memories / ad-hoc notes are **secondary**. If Atlas MCP is available, prefer Atlas tools for orientation and durable memory.
+
+## Where to look (Atlas Walk)
+
+1. **Memory Index** (`.cursor/mempalace-index.md`) — wing/room; search, never read whole file  
+2. **Memory Provider** (MemPalace if installed) — scoped recall  
+3. **Graph Index** (`.cursor/graphify-index.md`) — scoped graph  
+4. **Graph Provider** — Graphify *or* Mind Map (**one only**)  
+5. **project-cache** (`.cursor/project-cache.md`) — real file path  
+
+Missing layer → skip. Never invent memory hits. Stop at first FOUND.  
+Open **only** `cache_hits` / scoped paths from the route. Stay within char budgets.
+
+## What to remember
+
+### Project (this repo)
+
+After meaningful features, decisions, or bugfixes: one typed drawer via checkpoint.  
+Types: `decision` | `lesson` | `preference` | `bugfix` | `build`  
+Rooms: `architecture` | `debugging` | `conventions` | `build` | `general`  
+Update **project-cache** partially after edits (never reindex the whole tree by hand dump).
+
+### Life (all conversations — mandatory when Life is configured)
+
 Root: `~/atlas-life` or `$ATLAS_LIFE_ROOT`.
 
-### Session start
+1. **Session start:** `atlas_life_wake` → resume session init → hot drawers  
+2. **During:** durable facts → `atlas_life_remember` (`type`, `summary`, `topics`, `entities`, `push: true`)  
+3. **Recall:** `atlas_life_recall` / entity tools  
+4. **Session end:** prepare session-init for next wake  
 
-1. Call `atlas_life_wake` MCP tool (or `atlas life wake` CLI)
-2. Read the session init if present — resume from where we left off
-3. Load hot drawers (scored by relevance, not just recency)
+## Anti-patterns (forbidden)
 
-### During conversation
-
-- When the user shares durable facts, preferences, decisions, events, or mentions people/places:
-  call `atlas_life_remember` with appropriate `type`, `summary`, `topics`, and `entities`
-- Entity names (people, places, concepts) MUST go in the `entities` field
-- Use `push: true` to auto-commit to GitHub
-- To recall past knowledge: `atlas_life_recall` with a question
-- To find entity history: `atlas_life_entity_detail` or `atlas_life_entity_graph`
-
-### Session end
-
-Before the conversation ends or when the user says goodbye:
-call `atlas life session-end` (or the API) with summary + topics + last messages.
-This prepares the init for the next wake so the agent resumes seamlessly.
-
-### Entity management
-
-- `atlas_life_entity_list` — all known entities
-- `atlas_life_entity_detail` — drawers about a specific entity
-- `atlas_life_entity_merge` — merge duplicate entities
-- `atlas_life_entity_alias` — add alias to entity
-- `atlas_life_entity_relations` — co-occurrence graph
-
-## Write / checkpoint
-
-Drawer types: `decision` | `lesson` | `preference` | `bugfix` | `build`
-(+ life: `memory` | `event` | `person` | `goal`)
-Rooms: `architecture` | `debugging` | `conventions` | `build` | `general`
-(+ life: `day` | `week` | `month` | `year` | `people`)
-Include git fields when known. **No secrets.**
-Palace vs code conflict: **code wins** → mark `superseded`.
+- Grep/glob the monorepo **before** `atlas_recall_route` / project-cache  
+- Running Graphify **and** Mind Map as dual always-on graph backends  
+- Inventing memory hits or fake paths  
+- Storing API keys, tokens, or secrets in drawers  
+- Treating Cursor chat transcript as the only long-term memory  
 
 ## Stale
 
-`atlas stale` · git hook may set `status: stale` · update graph then set `ready`.
+`atlas stale` · hooks may mark graphs `stale` · refresh then `ready`.  
+Palace vs code conflict → **code wins** → mark `superseded`.
 
-## Rules
-
-- Never store API keys, tokens, or secrets in drawers
-- Pin important drawers with `atlas life pin <path>`
-- Rollup weekly: `atlas life rollup week`
-- Code always wins over stale memory
-
-Details: skill `atlas` + `reference.md`.
+Details: skill `atlas` + `reference.md`. Daemon: `atlas daemon` · connect: `atlas connect --editor cursor`.
