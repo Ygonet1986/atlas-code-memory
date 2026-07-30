@@ -17,6 +17,21 @@ jobs:
           python-version: "3.12"
       - run: pip install build
       - run: python -m build
+      - name: Check metadata
+        run: |
+          pip install twine
+          twine check dist/*
+      - name: Smoke test the built wheel
+        run: |
+          python -m venv /tmp/venv
+          /tmp/venv/bin/pip install --quiet dist/*.whl
+          /tmp/venv/bin/atlas --version
+          proj=$(mktemp -d)
+          mkdir -p "$proj/src"
+          printf '%s\n' '"""Validate JWT tokens."""' > "$proj/src/auth.py"
+          /tmp/venv/bin/atlas init -C "$proj"
+          /tmp/venv/bin/atlas cache status -C "$proj"
+          /tmp/venv/bin/atlas route "where are jwt tokens validated" -C "$proj"
+          /tmp/venv/bin/atlas bench --fixture
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        continue-on-error: true
