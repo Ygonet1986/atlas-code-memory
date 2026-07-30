@@ -3,8 +3,11 @@ __pycache__/
 .pytest_cache/
 .venv/
 dist/
-build/
+/build/
 *.egg-info/
+
+# "build" is also a drawer room, so it must survive the pattern above
+!.cursor/atlas-drawers/build/
 .cursor/atlas-metrics.json
 **/atlas-metrics.json
 .DS_Store
