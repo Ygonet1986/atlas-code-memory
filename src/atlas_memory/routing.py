@@ -11,6 +11,45 @@ from .drawer import DEFAULT_ROOMS
 DEFAULT_ROUTE_CHAR_BUDGET = 4000
 DEFAULT_WAKE_CHAR_BUDGET = 3000
 
+# Function words carry no routing signal but match almost any entry, which is
+# how an unrelated question ends up with confident-looking hits.
+STOPWORDS = {
+    # English
+    "the", "and", "for", "where", "what", "how", "are", "was", "were", "with",
+    "from", "that", "this", "these", "those", "does", "did", "can", "could",
+    "should", "would", "will", "into", "our", "its", "their", "they", "them",
+    "you", "your", "when", "why", "who", "whom", "which", "but", "not", "all",
+    "any", "some", "more", "most", "than", "then", "there", "here", "been",
+    "being", "have", "has", "had", "about", "after", "before", "between",
+    "during", "over", "under", "again", "only", "own", "same", "such", "too",
+    "very", "just", "also", "out", "off", "per", "via", "upon", "each", "both",
+    # Portuguese
+    "que", "como", "onde", "qual", "quais", "para", "por", "com", "sem", "dos",
+    "das", "uma", "uns", "umas", "este", "esta", "isso", "aquele", "aquela",
+    "nao", "não", "sim", "mas", "tambem", "também", "seu", "sua", "meu",
+    "minha", "nos", "nas", "foi", "era", "sao", "são", "tem", "têm", "tinha",
+    "quando", "porque", "pelo", "pela", "num", "numa", "aos", "ser",
+}
+
+# A token present in most cache entries cannot discriminate between them.
+COMMON_TOKEN_DF_RATIO = 0.6
+MIN_BLOCKS_FOR_DF_FILTER = 10
+
+
+def query_tokens(question: str) -> list[str]:
+    """Meaningful lowercase tokens from a natural-language question."""
+    raw = re.findall(r"[a-z0-9_./]+", question.lower())
+    return [t for t in raw if len(t) > 2 and t not in STOPWORDS]
+
+
+def _discriminating(tokens: list[str], blocks: list[str]) -> list[str]:
+    """Drop tokens so common in this index that they rank nothing."""
+    n = len(blocks)
+    if n < MIN_BLOCKS_FOR_DF_FILTER:
+        return tokens
+    cutoff = n * COMMON_TOKEN_DF_RATIO
+    return [t for t in tokens if sum(1 for b in blocks if t in b) <= cutoff]
+
 
 def _trim_to_budget(items: list[dict[str, Any]], budget: int, key: str = "summary") -> list[dict[str, Any]]:
     """Keep items in order until approximate char budget is exhausted."""
@@ -40,7 +79,7 @@ def recall_route(
     """
     project = project.resolve()
     q = question.lower()
-    tokens = [t for t in re.findall(r"[a-z0-9_./]+", q) if len(t) > 2]
+    tokens = query_tokens(q)
     mpi = project / ".cursor" / "mempalace-index.md"
     gfi = project / ".cursor" / "graphify-index.md"
     cache = project / ".cursor" / "project-cache.md"
@@ -111,12 +150,15 @@ def recall_route(
 
     cache_hits = []
     if cache.exists():
-        blocks = re.split(r"\n(?=### )", cache.read_text(encoding="utf-8", errors="replace"))
-        for block in blocks:
-            if not block.startswith("### "):
-                continue
-            low = block.lower()
-            score = sum(1 for tok in tokens if tok in low)
+        blocks = [
+            b
+            for b in re.split(r"\n(?=### )", cache.read_text(encoding="utf-8", errors="replace"))
+            if b.startswith("### ")
+        ]
+        lows = [b.lower() for b in blocks]
+        cache_tokens = _discriminating(tokens, lows)
+        for block, low in zip(blocks, lows):
+            score = sum(1 for tok in cache_tokens if tok in low)
             if score:
                 name = block.splitlines()[0][4:].strip()
                 addr = ""

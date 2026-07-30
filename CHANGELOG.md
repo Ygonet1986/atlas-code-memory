@@ -1,5 +1,59 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `atlas cache build` / `atlas cache status`: the project-cache layer is now built
+  from the source tree instead of being appended by hand. Descriptions come from
+  module docstrings, leading comments or exported symbols; hand-written entries
+  are preserved unless `--force`.
+- `atlas doctor` reports project-cache coverage and tells you how to fix it.
+- MCP tools `atlas_cache_status` / `atlas_cache_build`; daemon `GET|POST /api/cache`.
+- The `post-commit` hook keeps the cache in sync after every commit.
+- `atlas init` indexes the source tree on the way out, so routing answers the first
+  question instead of needing a second command (`--no-cache` opts out).
+- Real editor integrations in `atlas connect`: `windsurf` (`.windsurf/rules/`,
+  `~/.codeium/windsurf/mcp_config.json`), `vscode`/`copilot` (`.vscode/mcp.json`
+  with the `servers` key, `.github/copilot-instructions.md`), `zed` (`.rules`,
+  `context_servers`) and `codex` (`AGENTS.md`).
+- Negative bench cases (`expect_no_hits`, `expect_path_absent`) that measure what
+  the router must *not* return, plus `atlas bench --real` against this repository.
+
+### Security
+- **The local daemon now requires a token.** It used to answer any caller with
+  `Access-Control-Allow-Origin: *` and no authentication, so any page open in the
+  user's browser could read every personal memory, write false ones, spend DeepSeek
+  credits and trigger git pushes. Requests now need the token from
+  `~/.atlas/daemon-token` (`atlas token`, `atlas token --rotate`, or
+  `ATLAS_DAEMON_TOKEN`), sent as a bearer header, `X-Atlas-Token` or `?token=`.
+  `atlas daemon --no-auth` restores the old behaviour and says so loudly.
+- Wildcard CORS is gone. The daemon echoes an origin only for the desktop app's own
+  origin, and rejects requests whose `Host` is not loopback, which blocks DNS
+  rebinding.
+- `GET /api/health` stays reachable without a token for liveness probes, but no
+  longer discloses the version or the life-root path to an unauthenticated caller.
+- **Team bundle extraction is sandboxed.** `atlas sync import` called
+  `tarfile.extractall` with no filter on a file a teammate handed you. It now
+  refuses absolute paths, `..` traversal, symlinks, hard links and device files,
+  writes nothing if any member fails, and normalises file modes.
+
+### Changed
+- Routing drops English and Portuguese function words and tokens too common in the
+  index to discriminate, so unrelated questions now return nothing instead of noise.
+- The bench baseline honours `.atlasignore` and skips generated artifacts. Measured
+  savings on a real repository is 78%, against 99% on the synthetic fixture.
+- MCP `serverInfo.version` follows the package version instead of a hardcoded string.
+
+### Fixed
+- Editor configs are merged, never overwritten; unparseable JSONC is left alone and
+  a snippet is written next to it.
+- Skipped directory names are matched relative to the project root. A checkout living
+  under a path containing `build/`, `dist/`, `vendor/` or `site-packages/` used to be
+  invisible to both the cache builder and the bench baseline.
+- `atlas bench --real` explains that it needs a source checkout instead of silently
+  benchmarking whatever directory it landed in.
+- `pyproject` URLs point at the actual repository.
+
 ## 0.3.1 — 2026-07-30
 
 ### Added

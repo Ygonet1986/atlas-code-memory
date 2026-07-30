@@ -17,3 +17,7 @@ vendor/
 .env.*
 **/credentials.json
 **/service-account.json
+
+# Atlas-specific: synthetic bench fixture and sample projects are not this codebase
+eval/fixture-monorepo/
+examples/

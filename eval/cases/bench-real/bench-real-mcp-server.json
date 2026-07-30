@@ -1,0 +1,6 @@
+{
+  "id": "bench-real-mcp-server",
+  "question": "Where is the MCP server stdio loop implemented?",
+  "expect_path_contains": ["src/atlas_memory/mcp_server.py"],
+  "min_savings_pct": 40
+}

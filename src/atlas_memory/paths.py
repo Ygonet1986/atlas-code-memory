@@ -30,6 +30,12 @@ def repo_root_from_pkg() -> Path:
     return Path(__file__).resolve().parent.parent.parent
 
 
+def source_checkout_root() -> Path | None:
+    """Repo root when running from a source checkout, None from an installed wheel."""
+    root = repo_root_from_pkg()
+    return root if (root / "pyproject.toml").exists() and (root / "eval").is_dir() else None
+
+
 def data_dir(*parts: str) -> Path:
     root = package_data_root()
     # If root is repo (has templates/), use it; if root is data/, use it

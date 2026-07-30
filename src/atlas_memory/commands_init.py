@@ -14,8 +14,18 @@ def _wing_id(project: Path) -> str:
     return re.sub(r"[^a-z0-9_-]", "", name) or "project"
 
 
-def init_project(project: Path, *, force: bool = False, global_rule: bool = False) -> list[str]:
-    """Create missing Atlas files. Never overwrite unless force=True."""
+def init_project(
+    project: Path,
+    *,
+    force: bool = False,
+    global_rule: bool = False,
+    build_cache_index: bool = True,
+) -> list[str]:
+    """Create missing Atlas files. Never overwrite unless force=True.
+
+    The cache is built on the way out, so routing works on the first question
+    instead of after a second command the user has to know about.
+    """
     actions: list[str] = []
     project = project.resolve()
     cursor = project / ".cursor"
@@ -103,6 +113,17 @@ def init_project(project: Path, *, force: bool = False, global_rule: bool = Fals
             if s.exists():
                 shutil.copy2(s, home_skill / fname)
                 actions.append(f"create {home_skill / fname}")
+
+    if build_cache_index:
+        from .commands_cache import build_cache
+
+        result = build_cache(project)
+        actions.append(
+            f"index {len(result['added'])} source files into project-cache "
+            f"({result['coverage_pct']}% coverage)"
+        )
+        if result.get("truncated"):
+            actions.append("warn  file cap reached — narrow the tree with .atlasignore")
 
     metrics.record(project, "init")
     return actions

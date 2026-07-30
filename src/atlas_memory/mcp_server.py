@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from . import __version__
+from .commands_cache import build_cache, cache_status
 from .commands_stale import stale_report
 from .drawer import parse_drawer_markdown, validate_drawer
 from . import life as life_mod
@@ -60,6 +62,26 @@ def run_mcp() -> None:
             "inputSchema": {
                 "type": "object",
                 "properties": {"project": {"type": "string"}},
+            },
+        },
+        {
+            "name": "atlas_cache_status",
+            "description": "Coverage of the project-cache layer: which source files have no entry.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"project": {"type": "string"}},
+            },
+        },
+        {
+            "name": "atlas_cache_build",
+            "description": "Index every un-indexed source file into project-cache (safe: keeps hand-written entries).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project": {"type": "string"},
+                    "prune": {"type": "boolean", "description": "Drop entries whose file no longer exists"},
+                    "force": {"type": "boolean", "description": "Also regenerate existing descriptions"},
+                },
             },
         },
         {
@@ -218,7 +240,7 @@ def run_mcp() -> None:
                 {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "atlas-memory", "version": "0.3.0"},
+                    "serverInfo": {"name": "atlas-memory", "version": __version__},
                 },
             )
         elif method == "notifications/initialized":
@@ -254,6 +276,14 @@ def run_mcp() -> None:
                         }
                         for r in stale_report(project)
                     ]
+                elif name == "atlas_cache_status":
+                    result = cache_status(project)
+                elif name == "atlas_cache_build":
+                    result = build_cache(
+                        project,
+                        force=bool(args.get("force")),
+                        prune=bool(args.get("prune")),
+                    )
                 elif name == "atlas_protocol_score":
                     result = protocol_score(args.get("transcript", ""))
                 elif name == "atlas_life_wake":

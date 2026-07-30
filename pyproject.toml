@@ -29,9 +29,9 @@ atlas = "atlas_memory.cli:main"
 atlas-mcp = "atlas_memory.mcp_server:main"
 
 [project.urls]
-Homepage = "https://github.com/atlas-memory/atlas-memory"
-Documentation = "https://github.com/atlas-memory/atlas-memory#readme"
-Issues = "https://github.com/atlas-memory/atlas-memory/issues"
+Homepage = "https://github.com/Ygonet1986/atlas-memory"
+Documentation = "https://github.com/Ygonet1986/atlas-memory#readme"
+Issues = "https://github.com/Ygonet1986/atlas-memory/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/atlas_memory"]

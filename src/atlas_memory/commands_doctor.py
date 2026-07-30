@@ -3,6 +3,11 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+from .commands_cache import cache_status
+
+# Below this the router starts missing files that exist on disk.
+MIN_CACHE_COVERAGE = 60.0
+
 
 def which(cmd: str) -> str | None:
     return shutil.which(cmd)
@@ -26,6 +31,23 @@ def doctor(project: Path) -> list[tuple[str, str, str]]:
     file_check(".cursor/rules/atlas.mdc", required=False)
     file_check(".cursor/skills/atlas/SKILL.md", required=False)
     file_check(".atlasignore", required=False)
+
+    status = cache_status(project)
+    if not status.get("ok"):
+        rows.append(("project-cache coverage", "fail", str(status.get("error"))))
+    elif status["sources"] == 0:
+        rows.append(("project-cache coverage", "ok", "no indexable source files"))
+    else:
+        level = "ok" if status["coverage_pct"] >= MIN_CACHE_COVERAGE and not status["stale"] else "warn"
+        detail = f"{status['coverage_pct']}% ({status['indexed']}/{status['sources']} files)"
+        if status["missing"]:
+            detail += f", {len(status['missing'])} un-indexed"
+        if status["stale"]:
+            detail += f", {len(status['stale'])} entries point at deleted files"
+        if level == "warn":
+            fix = "atlas cache build" + (" --prune" if status["stale"] else "")
+            detail += f" — run: {fix}"
+        rows.append(("project-cache coverage", level, detail))
 
     mp = which("mempalace")
     rows.append(("mempalace CLI", "ok" if mp else "warn", mp or "optional — MemoryBackend none"))

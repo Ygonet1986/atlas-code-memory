@@ -14,18 +14,23 @@ graphify-index   →  Graphify or Mind Map (optional; pick one)
 project-cache    →  real files (always)
 ```
 
-Make it Cursor's default orientation + memory layer:
+Two commands from zero to a working router:
 
 ```bash
-atlas connect --editor cursor
+atlas init                        # creates the indexes and indexes your source tree
+atlas connect --editor cursor     # also: windsurf, vscode, zed, codex, claude
 # ~/.cursor/rules/atlas.mdc + MCP atlas-mcp — then reload MCP
 ```
 
 Prove token savings:
 
 ```bash
-atlas bench --fixture
+atlas bench --fixture   # synthetic monorepo: 99%
+atlas bench --real      # the Atlas repo (needs a source checkout): 78%
 ```
+
+Both suites include negative cases, where the correct answer is for the router to
+stay silent instead of returning plausible-looking noise.
 
 Local daemon (any AI editor):
 

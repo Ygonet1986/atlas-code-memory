@@ -1,0 +1,6 @@
+{
+  "id": "bench-real-daemon-config",
+  "question": "How is the daemon HTTP config loaded?",
+  "expect_path_contains": ["src/atlas_memory/daemon.py"],
+  "min_savings_pct": 40
+}

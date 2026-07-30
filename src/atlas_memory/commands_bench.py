@@ -4,27 +4,21 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from . import metrics
+from .commands_cache import SKIP_DIRS as CACHE_SKIP_DIRS
+from .commands_cache import path_ignored
 from .paths import data_dir, repo_root_from_pkg
-from .routing import recall_route
+from .routing import query_tokens, recall_route
+from .secrets import load_atlasignore
 
 
-SKIP_DIRS = {
-    ".git",
-    "node_modules",
-    "__pycache__",
-    ".venv",
-    "venv",
-    "dist",
-    "build",
-    ".next",
-    "coverage",
-    "vendor",
-}
+# The baseline must explore the same universe the cache indexes, otherwise the
+# savings number is inflated by generated artifacts no agent would ever grep.
+SKIP_DIRS = CACHE_SKIP_DIRS - {".cursor"}
 
 
 @dataclass
@@ -32,7 +26,16 @@ class BenchCase:
     id: str
     question: str
     expect_path_contains: list[str]
+    expect_path_absent: list[str] = field(default_factory=list)
+    expect_no_hits: bool = False
     min_savings_pct: float = 40.0
+
+    @property
+    def negative(self) -> bool:
+        """Pure precision case: there is nothing correct to retrieve."""
+        return self.expect_no_hits or (
+            bool(self.expect_path_absent) and not self.expect_path_contains
+        )
 
 
 def token_proxy(chars: int) -> int:
@@ -49,6 +52,8 @@ def load_bench_cases(cases_dir: Path) -> list[BenchCase]:
                 id=data.get("id", path.stem),
                 question=data["question"],
                 expect_path_contains=list(data.get("expect_path_contains", [])),
+                expect_path_absent=list(data.get("expect_path_absent", [])),
+                expect_no_hits=bool(data.get("expect_no_hits", False)),
                 min_savings_pct=float(data.get("min_savings_pct", 40.0)),
             )
         )
@@ -56,22 +61,27 @@ def load_bench_cases(cases_dir: Path) -> list[BenchCase]:
 
 
 def _tokens(question: str) -> list[str]:
-    stop = {"the", "and", "for", "where", "what", "how", "is", "are", "with", "from"}
-    return [t for t in re.findall(r"[a-z0-9_./]+", question.lower()) if len(t) > 2 and t not in stop]
+    # Same tokenization as the router so both arms see the same question.
+    return query_tokens(question)
 
 
 def _iter_source_files(project: Path) -> list[Path]:
+    patterns = load_atlasignore(project)
     out: list[Path] = []
     for p in project.rglob("*"):
         if not p.is_file():
             continue
-        if any(part in SKIP_DIRS for part in p.parts):
+        rel_parts = p.relative_to(project).parts
+        if any(part in SKIP_DIRS for part in rel_parts[:-1]):
             continue
         # Indexes themselves are cheap navigation — exclude from baseline "read" cost
-        if ".cursor" in p.parts and p.name.endswith((".md", ".json")):
+        if ".cursor" in rel_parts and p.name.endswith((".md", ".json")):
             continue
-        if p.suffix.lower() in {".py", ".ts", ".tsx", ".js", ".jsx", ".rs", ".go", ".md", ".json", ".toml", ".yml", ".yaml"}:
-            out.append(p)
+        if p.suffix.lower() not in {".py", ".ts", ".tsx", ".js", ".jsx", ".rs", ".go", ".md", ".json", ".toml", ".yml", ".yaml"}:
+            continue
+        if path_ignored("/".join(rel_parts), patterns):
+            continue
+        out.append(p)
     return out
 
 
@@ -162,11 +172,22 @@ def atlas_explore(project: Path, question: str, *, max_files: int = 8) -> dict[s
     }
 
 
+def _blob(paths: list[str]) -> str:
+    return " ".join(paths).lower().replace("\\", "/")
+
+
 def _hit_expected(paths: list[str], expect: list[str]) -> bool:
     if not expect:
         return True
-    blob = " ".join(paths).lower().replace("\\", "/")
+    blob = _blob(paths)
     return all(e.lower().replace("\\", "/") in blob for e in expect)
+
+
+def _none_present(paths: list[str], forbidden: list[str]) -> bool:
+    if not forbidden:
+        return True
+    blob = _blob(paths)
+    return not any(e.lower().replace("\\", "/") in blob for e in forbidden)
 
 
 def run_bench_case(project: Path, case: BenchCase) -> dict[str, Any]:
@@ -179,11 +200,19 @@ def run_bench_case(project: Path, case: BenchCase) -> dict[str, Any]:
     else:
         savings = max(0.0, (b_tok - a_tok) / b_tok * 100.0)
     found = _hit_expected(atlas["paths"], case.expect_path_contains)
-    # Also accept if baseline somehow found it but atlas must still find target
-    ok = found and savings >= case.min_savings_pct
+    absent_ok = _none_present(atlas["paths"], case.expect_path_absent)
+    hits = atlas["route"]["cache_hits"]
+    quiet_ok = (not case.expect_no_hits) or not hits
+
+    if case.negative:
+        # Precision case: the win is staying silent, not saving tokens.
+        ok = absent_ok and quiet_ok
+    else:
+        ok = found and absent_ok and savings >= case.min_savings_pct
     return {
         "id": case.id,
         "question": case.question,
+        "kind": "negative" if case.negative else "positive",
         "baseline": base,
         "atlas": atlas,
         "token_proxy_baseline": b_tok,
@@ -191,6 +220,7 @@ def run_bench_case(project: Path, case: BenchCase) -> dict[str, Any]:
         "savings_pct": round(savings, 1),
         "min_savings_pct": case.min_savings_pct,
         "found_target": found,
+        "no_false_positive": absent_ok and quiet_ok,
         "pass": ok,
     }
 
@@ -207,6 +237,15 @@ def default_bench_cases_dir() -> Path:
     candidates = [
         repo_root_from_pkg() / "eval" / "cases" / "bench",
         data_dir("eval", "cases", "bench"),
+    ]
+    return next((c for c in candidates if c.is_dir()), candidates[0])
+
+
+def real_bench_cases_dir() -> Path:
+    """Cases that run against the Atlas repository itself, not a synthetic fixture."""
+    candidates = [
+        repo_root_from_pkg() / "eval" / "cases" / "bench-real",
+        data_dir("eval", "cases", "bench-real"),
     ]
     return next((c for c in candidates if c.is_dir()), candidates[0])
 
@@ -228,20 +267,27 @@ def run_bench(
             "results": [],
         }
     results = [run_bench_case(project, c) for c in cases]
-    avg = sum(r["savings_pct"] for r in results) / len(results) if results else 0.0
+    # A silent router "saves" everything on a negative case, so averaging those
+    # in would inflate the headline number. Savings is a positive-case metric.
+    positives = [r for r in results if r["kind"] == "positive"]
+    negatives = [r for r in results if r["kind"] == "negative"]
+    avg = sum(r["savings_pct"] for r in positives) / len(positives) if positives else 0.0
     passed = sum(1 for r in results if r["pass"])
-    ok = passed == len(results) and avg >= min_avg_savings
+    ok = passed == len(results) and (not positives or avg >= min_avg_savings)
     report = {
         "ok": ok,
         "project": str(project),
         "cases": len(results),
         "passed": passed,
+        "positive_cases": len(positives),
+        "negative_cases": len(negatives),
+        "negative_passed": sum(1 for r in negatives if r["pass"]),
         "avg_savings_pct": round(avg, 1),
         "min_avg_savings_pct": min_avg_savings,
-        "token_proxy_baseline_total": sum(r["token_proxy_baseline"] for r in results),
-        "token_proxy_atlas_total": sum(r["token_proxy_atlas"] for r in results),
+        "token_proxy_baseline_total": sum(r["token_proxy_baseline"] for r in positives),
+        "token_proxy_atlas_total": sum(r["token_proxy_atlas"] for r in positives),
         "results": results,
-        "note": "token_proxy = chars//4 (deterministic; no LLM).",
+        "note": "token_proxy = chars//4 (deterministic; no LLM). Savings averaged over positive cases only.",
     }
     metrics.record(
         project,
@@ -261,16 +307,23 @@ def format_bench_markdown(report: dict[str, Any]) -> str:
         f"Project: `{report.get('project')}`",
         f"Average savings: **{report.get('avg_savings_pct')}%** "
         f"(baseline {report.get('token_proxy_baseline_total')} -> atlas {report.get('token_proxy_atlas_total')} tokens)",
-        f"Cases: {report.get('passed')}/{report.get('cases')} passed",
+        f"Cases: {report.get('passed')}/{report.get('cases')} passed "
+        f"({report.get('negative_passed')}/{report.get('negative_cases')} negative)",
         "",
-        "| Case | Savings | Baseline tokens | Atlas tokens | Target |",
-        "|------|---------|-----------------|--------------|--------|",
+        "| Case | Kind | Savings | Baseline tokens | Atlas tokens | Target |",
+        "|------|------|---------|-----------------|--------------|--------|",
     ]
     for r in report.get("results") or []:
         flag = "PASS" if r.get("pass") else "FAIL"
+        if r.get("kind") == "negative":
+            savings = "n/a"
+            target = "silent" if r.get("no_false_positive") else "leaked"
+        else:
+            savings = f"{r['savings_pct']}%"
+            target = "yes" if r.get("found_target") else "no"
         lines.append(
-            f"| {flag} {r['id']} | {r['savings_pct']}% | {r['token_proxy_baseline']} | "
-            f"{r['token_proxy_atlas']} | {'yes' if r.get('found_target') else 'no'} |"
+            f"| {flag} {r['id']} | {r.get('kind')} | {savings} | {r['token_proxy_baseline']} | "
+            f"{r['token_proxy_atlas']} | {target} |"
         )
     lines.append("")
     lines.append(str(report.get("note") or ""))

@@ -1,0 +1,7 @@
+{
+  "id": "bench-precision-decoy",
+  "question": "Where is user login authentication implemented?",
+  "expect_path_contains": ["src/auth/login.py"],
+  "expect_path_absent": ["src/billing/", "src/core/"],
+  "min_savings_pct": 40
+}

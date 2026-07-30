@@ -109,7 +109,7 @@ def ensure_day_mindmap_scope(root: Path, day_key: str | None = None) -> None:
         root,
         name,
         scope,
-        descricao=f"Mind Map scope for conversations on {day_key}.",
+        description=f"Mind Map scope for conversations on {day_key}.",
         status="missing",
     )
 

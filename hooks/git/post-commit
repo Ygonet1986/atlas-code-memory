@@ -5,3 +5,5 @@ ROOT="$(git rev-parse --show-toplevel)"
 CHANGED="$(git diff-tree --no-commit-id --name-only -r HEAD || true)"
 [[ -z "$CHANGED" ]] && exit 0
 echo "$CHANGED" | atlas hooks mark-stale --stdin -C "$ROOT" || true
+# Keep the mandatory layer in sync: index new files, drop deleted ones.
+atlas cache build -C "$ROOT" --prune >/dev/null 2>&1 || true

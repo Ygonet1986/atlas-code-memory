@@ -1,0 +1,6 @@
+{
+  "id": "bench-real-git-hooks",
+  "question": "Where are git hooks installed?",
+  "expect_path_contains": ["src/atlas_memory/commands_hooks.py"],
+  "min_savings_pct": 40
+}

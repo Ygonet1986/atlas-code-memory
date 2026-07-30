@@ -17,3 +17,7 @@ apps/atlas-chat/src-tauri/target/
 # MemPalace per-project files (issue #185)
 mempalace.yaml
 entities.json
+
+# Graph provider output — regenerated artifact, never reviewed
+graphify-out/
+.graphify_labels.json

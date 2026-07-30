@@ -13,6 +13,14 @@ from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
 from . import life as life_mod
+from .http_auth import (
+    CORS_HEADERS,
+    DEFAULT_ALLOWED_ORIGINS,
+    allowed_origin,
+    authorize,
+    load_or_create_token,
+    token_matches,
+)
 
 DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
 SYSTEM_BASE = """You are Atlas Life, a personal memory assistant.
@@ -25,9 +33,12 @@ If nothing durable, omit the JSON entirely. Never include API keys or secrets.
 
 def _json_response(handler: BaseHTTPRequestHandler, code: int, payload: Any) -> None:
     handler.send_response(code)
-    handler.send_header("Access-Control-Allow-Origin", "*")
-    handler.send_header("Access-Control-Allow-Headers", "Content-Type")
-    handler.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    origin = allowed_origin(handler, getattr(handler, "allowed_origins", DEFAULT_ALLOWED_ORIGINS))
+    if origin:
+        handler.send_header("Access-Control-Allow-Origin", origin)
+        handler.send_header("Vary", "Origin")
+        handler.send_header("Access-Control-Allow-Headers", CORS_HEADERS)
+        handler.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
     if code == 204:
         handler.end_headers()
         return
@@ -119,15 +130,42 @@ def _query_params(path_with_qs: str) -> dict[str, str]:
     return {k: v[0] for k, v in parsed.items() if v}
 
 
-def make_handler(life_root: Path | None, static_dir: Path | None) -> type[BaseHTTPRequestHandler]:
+def make_handler(
+    life_root: Path | None,
+    static_dir: Path | None,
+    *,
+    auth_token: str | None = None,
+    allowed_origins: tuple[str, ...] = DEFAULT_ALLOWED_ORIGINS,
+) -> type[BaseHTTPRequestHandler]:
+    """Build the handler. ``auth_token=""`` disables the token check entirely."""
+    token = load_or_create_token() if auth_token is None else auth_token
+
     class Handler(BaseHTTPRequestHandler):
+        allowed_origins = ()  # replaced below; keeps _json_response self-contained
+
         def log_message(self, fmt: str, *args: Any) -> None:
             pass
 
+        def authenticated(self) -> bool:
+            """True when the caller proved the token, even on a public path."""
+            return True if not token else token_matches(self, token)
+
+        def guard(self, *, require_token: bool = True) -> bool:
+            status, reason = authorize(self, token, require_token=require_token and bool(token))
+            if status:
+                _json_response(self, status, {"ok": False, "error": reason})
+                return False
+            return True
+
         def do_OPTIONS(self) -> None:  # noqa: N802
+            # A CORS preflight cannot carry the token, so only the Host is checked.
+            if not self.guard(require_token=False):
+                return
             _json_response(self, 204, {})
 
         def do_GET(self) -> None:  # noqa: N802
+            if not self.guard():
+                return
             path = urlparse(self.path).path
             params = _query_params(self.path)
             root = _root_from_query(params, life_root)
@@ -193,6 +231,8 @@ def make_handler(life_root: Path | None, static_dir: Path | None) -> type[BaseHT
             _json_response(self, 404, {"ok": False, "error": "not found"})
 
         def do_POST(self) -> None:  # noqa: N802
+            if not self.guard():
+                return
             path = urlparse(self.path).path
             body = _read_json(self)
             root = Path(body["life_root"]).expanduser() if body.get("life_root") else life_root
@@ -306,6 +346,8 @@ def make_handler(life_root: Path | None, static_dir: Path | None) -> type[BaseHT
                 return
             _json_response(self, 404, {"ok": False, "error": "not found"})
 
+    Handler.allowed_origins = allowed_origins
+    Handler.auth_token = token
     return Handler
 
 
@@ -316,11 +358,18 @@ def serve(
     life_root: Path | None = None,
     static_dir: Path | None = None,
     open_browser: bool = False,
+    auth_token: str | None = None,
 ) -> None:
-    handler = make_handler(life_root, static_dir)
+    handler = make_handler(life_root, static_dir, auth_token=auth_token)
+    token = getattr(handler, "auth_token", "")
     httpd = ThreadingHTTPServer((host, port), handler)
     url = f"http://{host}:{port}/"
     print(f"atlas life serve {url} root={life_mod.life_root(life_root)}")
+    if token:
+        print(f"  token: {token}")
+        print(f"  open:  {url}?token={token}")
+    else:
+        print("  WARNING: authentication disabled — any local page can read your memories")
     if open_browser:
         import threading
         import webbrowser

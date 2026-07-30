@@ -1,0 +1,7 @@
+{
+  "id": "bench-negative-unrelated",
+  "question": "Where is the kubernetes ingress controller sharding policy configured?",
+  "expect_path_contains": [],
+  "expect_no_hits": true,
+  "min_savings_pct": 0
+}

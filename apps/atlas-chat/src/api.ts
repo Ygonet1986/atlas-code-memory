@@ -49,13 +49,39 @@ function defaultSettings(): Settings {
   };
 }
 
+const TOKEN_KEY = "atlas-daemon-token";
+
+/**
+ * The daemon requires a token so that no other page in the browser can reach it.
+ * Accept it once from `?token=...` (printed by `atlas daemon`) and keep it.
+ */
+export function daemonToken(): string {
+  const fromUrl = new URLSearchParams(location.search).get("token");
+  if (fromUrl) localStorage.setItem(TOKEN_KEY, fromUrl);
+  return localStorage.getItem(TOKEN_KEY) || "";
+}
+
+export function setDaemonToken(token: string) {
+  localStorage.setItem(TOKEN_KEY, token.trim());
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = daemonToken();
   const res = await fetch(path, {
-    headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { "X-Atlas-Token": token } : {}),
+      ...(init?.headers || {}),
+    },
     ...init,
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || data.detail || res.statusText);
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(`${data.error || "unauthorized"} — run 'atlas token' and paste it in Settings`);
+    }
+    throw new Error(data.error || data.detail || res.statusText);
+  }
   return data as T;
 }
 

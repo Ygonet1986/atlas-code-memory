@@ -7,8 +7,9 @@ from pathlib import Path
 
 from . import __version__, metrics
 from .commands_bench import format_bench_markdown, run_bench
+from .commands_cache import build_cache, cache_status
 from .commands_checkpoint import file_checkpoint
-from .commands_connect import connect_editor
+from .commands_connect import SUPPORTED_EDITORS, connect_editor
 from .commands_doctor import doctor
 from .commands_eval import run_eval
 from .commands_graph import add_graph, list_graphs, set_graph_status
@@ -31,7 +32,12 @@ def _project(args: argparse.Namespace) -> Path:
 
 
 def cmd_init(args: argparse.Namespace) -> int:
-    actions = init_project(_project(args), force=args.force, global_rule=args.global_rule)
+    actions = init_project(
+        _project(args),
+        force=args.force,
+        global_rule=args.global_rule,
+        build_cache_index=not args.no_cache,
+    )
     for a in actions:
         print(a)
     print(f"atlas init: done ({_project(args)})")
@@ -82,6 +88,47 @@ def cmd_stale(args: argparse.Namespace) -> int:
 def cmd_import(args: argparse.Namespace) -> int:
     for a in import_docs(_project(args)):
         print(a)
+    return 0
+
+
+def cmd_cache(args: argparse.Namespace) -> int:
+    root = _project(args)
+    if args.cache_cmd == "status":
+        data = cache_status(root)
+        if args.json:
+            print(json.dumps(data, indent=2))
+            return 0 if data.get("ok") else 1
+        if not data.get("ok"):
+            print(f"FAIL {data.get('error')}")
+            return 1
+        print(
+            f"coverage {data['coverage_pct']}% "
+            f"({data['indexed']}/{data['sources']} source files, {data['entries']} entries)"
+        )
+        for rel in data["missing"][:20]:
+            print(f"  MISS {rel}")
+        if len(data["missing"]) > 20:
+            print(f"  … {len(data['missing']) - 20} more")
+        for rel in data["stale"][:10]:
+            print(f"  GONE {rel}")
+        if data.get("truncated"):
+            print(f"  note: stopped at {len(data['missing']) + data['indexed']} files — narrow with .atlasignore")
+        return 0
+
+    result = build_cache(
+        root,
+        force=args.force,
+        prune=args.prune,
+        dry_run=args.dry_run,
+    )
+    if args.json:
+        print(json.dumps(result, indent=2))
+        return 0
+    verb = "would index" if args.dry_run else "indexed"
+    print(f"{verb} {len(result['added'])} new, refreshed {len(result['updated'])}, pruned {len(result['pruned'])}")
+    print(f"coverage {result['coverage_pct']}% ({result['entries']} entries for {result['sources']} source files)")
+    if result.get("truncated"):
+        print("note: file cap reached — add paths to .atlasignore or scope the project")
     return 0
 
 
@@ -146,13 +193,32 @@ def cmd_eval(args: argparse.Namespace) -> int:
 
 
 def cmd_bench(args: argparse.Namespace) -> int:
-    from .commands_bench import default_fixture_root
+    from .commands_bench import default_fixture_root, real_bench_cases_dir
+    from .paths import source_checkout_root
 
-    if getattr(args, "use_fixture", False) or not args.project:
+    cases = Path(args.cases) if args.cases else None
+    if getattr(args, "use_real", False):
+        # These cases name files in the Atlas tree, so they need a source checkout.
+        if args.project:
+            project = Path(args.project).resolve()
+        else:
+            checkout = source_checkout_root()
+            if checkout is None:
+                print(
+                    "FAIL --real needs the Atlas source checkout "
+                    "(git clone https://github.com/Ygonet1986/atlas-memory), "
+                    "or pass -C with your own project and --cases"
+                )
+                return 1
+            project = checkout
+        cases = cases or real_bench_cases_dir()
+        if not cases.is_dir():
+            print(f"FAIL no real-repo cases at {cases}")
+            return 1
+    elif getattr(args, "use_fixture", False) or not args.project:
         project = default_fixture_root()
     else:
         project = Path(args.project).resolve()
-    cases = Path(args.cases) if args.cases else None
     report = run_bench(project, cases_dir=cases, min_avg_savings=args.min_savings)
     if args.json:
         print(json.dumps(report, indent=2))
@@ -179,7 +245,19 @@ def cmd_daemon(args: argparse.Namespace) -> int:
         default_project=project,
         static_dir=static,
         open_browser=bool(args.open),
+        auth_token="" if getattr(args, "no_auth", False) else None,
     )
+    return 0
+
+
+def cmd_token(args: argparse.Namespace) -> int:
+    from .http_auth import load_or_create_token, reset_token, token_path
+
+    token = reset_token() if args.rotate else load_or_create_token()
+    if args.json:
+        print(json.dumps({"token": token, "path": str(token_path())}, indent=2))
+    else:
+        print(token)
     return 0
 
 
@@ -344,6 +422,11 @@ def build_parser() -> argparse.ArgumentParser:
     add_project(s)
     s.add_argument("--force", action="store_true")
     s.add_argument("--global-rule", action="store_true")
+    s.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="skip indexing the source tree into project-cache",
+    )
     s.set_defaults(func=cmd_init)
 
     s = sub.add_parser("status", help="show which Atlas files exist")
@@ -361,6 +444,20 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("import", help="seed cache/drawers from README and ADRs")
     add_project(s)
     s.set_defaults(func=cmd_import)
+
+    s = sub.add_parser("cache", help="build/audit project-cache from the source tree")
+    cs = s.add_subparsers(dest="cache_cmd", required=True)
+    c = cs.add_parser("build", help="add a cache entry for every un-indexed source file")
+    add_project(c)
+    c.add_argument("--force", action="store_true", help="also refresh descriptions of existing entries")
+    c.add_argument("--prune", action="store_true", help="drop entries whose file no longer exists")
+    c.add_argument("--dry-run", action="store_true")
+    c.add_argument("--json", action="store_true")
+    c.set_defaults(func=cmd_cache)
+    c = cs.add_parser("status", help="coverage report for the project-cache layer")
+    add_project(c)
+    c.add_argument("--json", action="store_true")
+    c.set_defaults(func=cmd_cache)
 
     s = sub.add_parser("checkpoint", help="validate drawer; optional --write/--mine")
     add_project(s)
@@ -390,6 +487,12 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--min-savings", type=float, default=40.0, help="required average savings %%")
     s.add_argument("--json", action="store_true")
     s.add_argument("--fixture", dest="use_fixture", action="store_true", help="force bundled fixture")
+    s.add_argument(
+        "--real",
+        dest="use_real",
+        action="store_true",
+        help="run the real-repository suite (eval/cases/bench-real) instead of the synthetic fixture",
+    )
     s.set_defaults(func=cmd_bench)
 
     s = sub.add_parser("hooks", help="git hook helpers")
@@ -479,13 +582,23 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--static", default=None)
     s.add_argument("--with-ui", action="store_true")
     s.add_argument("--open", action="store_true")
+    s.add_argument(
+        "--no-auth",
+        action="store_true",
+        help="disable the token check (unsafe: any local web page can read your memories)",
+    )
     s.set_defaults(func=cmd_daemon)
+
+    s = sub.add_parser("token", help="print the daemon token clients must send")
+    s.add_argument("--rotate", action="store_true", help="revoke the current token and issue a new one")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_token)
 
     s = sub.add_parser(
         "connect",
         help="make Atlas the editor's where-to-look / what-to-remember layer (Cursor: global by default)",
     )
-    s.add_argument("--editor", default="cursor", choices=["cursor", "claude", "claude-code", "windsurf", "generic"])
+    s.add_argument("--editor", default="cursor", choices=list(SUPPORTED_EDITORS))
     s.add_argument("-C", "--project", default=".")
     s.add_argument(
         "--global",

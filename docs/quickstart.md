@@ -14,21 +14,52 @@ atlas --version
 
 ```bash
 cd ~/code/my-app
-atlas init --global-rule
-atlas onboard
-atlas doctor
+atlas init --global-rule        # creates the indexes and indexes your source tree
 atlas connect --editor cursor   # Atlas = Cursor default where/remember layer
+atlas doctor                    # verify
 ```
 
 Open the folder in Cursor, **reload MCP**, then ask: “What should we check in Atlas before editing?”
 
+## Build the cache
+
+The project-cache is the only mandatory layer: routing can only point at files it
+knows about. `atlas init` builds it for you; these commands keep it current. The
+description of each file comes from its module docstring, its leading comment or
+its exported symbols.
+
+```bash
+atlas cache build            # index new files, keep hand-written descriptions
+atlas cache build --prune    # also drop entries whose file was deleted
+atlas cache build --force    # regenerate every description
+atlas cache status           # coverage report + list of un-indexed files
+```
+
+Exclude paths with `.atlasignore`. `atlas hooks install` re-runs the build after
+every commit, so the cache never drifts from the tree.
+
+## Connect other editors
+
+```bash
+atlas connect --editor windsurf   # .windsurf/rules/ + ~/.codeium/windsurf/mcp_config.json
+atlas connect --editor vscode     # .vscode/mcp.json + .github/copilot-instructions.md
+atlas connect --editor zed        # .rules + context_servers in Zed settings
+atlas connect --editor codex      # AGENTS.md
+atlas connect --editor generic    # HTTP daemon instructions for anything else
+```
+
+Existing configs are merged, never overwritten.
+
 ## Token savings check
 
 ```bash
-atlas bench --fixture
-# or against this repo after indexes exist:
-atlas bench -C .
+atlas bench --fixture   # synthetic monorepo, ~99% savings
+atlas bench --real      # this repository, ~78% savings
+atlas bench -C .        # your project, with your own cases via --cases
 ```
+
+The suites include negative cases: questions with no answer in the repo, where the
+router is expected to return nothing rather than plausible-looking noise.
 
 ## Local daemon (any AI editor)
 

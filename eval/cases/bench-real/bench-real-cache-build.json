@@ -1,0 +1,6 @@
+{
+  "id": "bench-real-cache-build",
+  "question": "How is the project cache built from the source tree?",
+  "expect_path_contains": ["src/atlas_memory/commands_cache.py"],
+  "min_savings_pct": 40
+}

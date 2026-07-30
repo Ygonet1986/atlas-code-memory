@@ -11,6 +11,8 @@ from urllib.parse import unquote, urlparse
 
 from . import __version__, life as life_mod
 from .commands_bench import format_bench_markdown, run_bench
+from .commands_cache import build_cache, cache_status
+from .http_auth import DEFAULT_ALLOWED_ORIGINS, token_path
 from .life_chat_server import (
     _json_response,
     _query_params,
@@ -62,14 +64,24 @@ def make_daemon_handler(
     life_root: Path | None,
     default_project: Path | None,
     static_dir: Path | None,
+    auth_token: str | None = None,
+    allowed_origins: tuple[str, ...] = DEFAULT_ALLOWED_ORIGINS,
 ) -> type[BaseHTTPRequestHandler]:
-    LifeHandler = make_life_handler(life_root, static_dir)
+    LifeHandler = make_life_handler(
+        life_root, static_dir, auth_token=auth_token, allowed_origins=allowed_origins
+    )
 
     class Handler(LifeHandler):  # type: ignore[valid-type,misc]
         def do_GET(self) -> None:  # noqa: N802
+            if not self.guard():
+                return
             path = urlparse(self.path).path
             params = _query_params(self.path)
             if path == "/api/health":
+                # Reachable without a token, so it must stay free of local paths.
+                if not self.authenticated():
+                    _json_response(self, 200, {"ok": True, "service": "atlas-memory", "auth": "required"})
+                    return
                 cfg = load_config()
                 _json_response(
                     self,
@@ -96,10 +108,17 @@ def make_daemon_handler(
                 report = run_bench(project)
                 _json_response(self, 200, report)
                 return
+            if path == "/api/cache":
+                proj = params.get("project") or (str(default_project) if default_project else ".")
+                project = Path(unquote(proj)).expanduser().resolve()
+                _json_response(self, 200, cache_status(project))
+                return
             # Fall through to life chat handler
             super().do_GET()
 
         def do_POST(self) -> None:  # noqa: N802
+            if not self.guard():
+                return
             path = urlparse(self.path).path
             body = _read_json(self)
             if path == "/api/route":
@@ -116,6 +135,20 @@ def make_daemon_handler(
                     _json_response(self, 200, {"ok": report.get("ok"), "markdown": format_bench_markdown(report), "report": report})
                 else:
                     _json_response(self, 200, report)
+                return
+            if path == "/api/cache":
+                proj = body.get("project") or (str(default_project) if default_project else ".")
+                project = Path(proj).expanduser().resolve()
+                _json_response(
+                    self,
+                    200,
+                    build_cache(
+                        project,
+                        force=bool(body.get("force")),
+                        prune=bool(body.get("prune")),
+                        dry_run=bool(body.get("dry_run")),
+                    ),
+                )
                 return
             if path == "/api/config":
                 path_written = save_config(body)
@@ -134,6 +167,7 @@ def serve_daemon(
     default_project: Path | None = None,
     static_dir: Path | None = None,
     open_browser: bool = False,
+    auth_token: str | None = None,
 ) -> None:
     cfg = load_config()
     host = host or cfg.get("host") or DEFAULT_HOST
@@ -156,10 +190,17 @@ def serve_daemon(
         life_root=life_root,
         default_project=default_project,
         static_dir=static_dir,
+        auth_token=auth_token,
     )
+    token = getattr(handler, "auth_token", "")
     httpd = ThreadingHTTPServer((host, port), handler)
     url = f"http://{host}:{port}/"
     print(f"atlas daemon {url} version={__version__} life={life_mod.life_root(life_root)}")
+    if token:
+        print(f"  token: {token}   (also in {token_path()})")
+        print(f"  usage: curl -H 'Authorization: Bearer {token}' '{url}api/route?q=...'")
+    else:
+        print("  WARNING: --no-auth — any page in your browser can read and write your memories")
     if open_browser:
         import webbrowser
 

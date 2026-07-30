@@ -1,0 +1,7 @@
+{
+  "id": "bench-real-negative-gpu",
+  "question": "Where is the GPU kernel autotuning schedule defined?",
+  "expect_path_contains": [],
+  "expect_no_hits": true,
+  "min_savings_pct": 0
+}
