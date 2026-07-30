@@ -1,7 +1,7 @@
 # Atlas Memory
 
 [![CI](https://img.shields.io/github/actions/workflow/status/Ygonet1986/atlas-memory/ci.yml?label=CI)](https://github.com/Ygonet1986/atlas-memory/actions)
-[![PyPI](https://img.shields.io/badge/PyPI-atlas--memory-blue)](https://pypi.org/project/atlas-memory/)
+[![PyPI](https://img.shields.io/pypi/v/atlas-code-memory?label=PyPI)](https://pypi.org/project/atlas-code-memory/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **The token GPS for AI coding — Cursor's where-to-look / what-to-remember layer.**
@@ -80,14 +80,20 @@ atlas-mcp             # stdio MCP
 ## 60-second install
 
 ```bash
-git clone https://github.com/Ygonet1986/atlas-memory.git
-cd atlas-memory
-pip install -e .
+pip install atlas-code-memory
 
 cd ~/code/your-app
 atlas init --global-rule
 atlas onboard
 atlas doctor
+```
+
+From source instead:
+
+```bash
+git clone https://github.com/Ygonet1986/atlas-memory.git
+cd atlas-memory
+pip install -e .
 ```
 
 Open the project in Cursor. The Atlas rule steers the agent automatically.

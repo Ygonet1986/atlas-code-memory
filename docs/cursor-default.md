@@ -7,7 +7,7 @@ It does not replace the Cursor IDE. It becomes the mandatory orientation + durab
 ## One command
 
 ```bash
-pip install -e .   # or: pip install atlas-memory
+pip install -e .   # or: pip install atlas-code-memory
 atlas connect --editor cursor
 ```
 

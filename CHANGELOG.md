@@ -2,6 +2,10 @@
 
 ## 0.4.0 — 2026-07-30
 
+First release on PyPI, published as **`atlas-code-memory`** — `atlas-memory` was
+already registered by an unrelated project. Nothing else is renamed: the import
+package stays `atlas_memory` and the commands stay `atlas` and `atlas-mcp`.
+
 ### Added
 - `atlas cache build` / `atlas cache status`: the project-cache layer is now built
   from the source tree instead of being appended by hand. Descriptions come from

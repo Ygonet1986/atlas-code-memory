@@ -3,11 +3,17 @@
 ## Install
 
 ```bash
+pip install atlas-code-memory
+
+atlas --version
+```
+
+Or from source:
+
+```bash
 git clone https://github.com/Ygonet1986/atlas-memory.git
 cd atlas-memory
 pip install -e .
-
-atlas --version
 ```
 
 ## New project

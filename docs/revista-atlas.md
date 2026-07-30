@@ -112,7 +112,7 @@ Cursor, Claude Code, Windsurf ou um editor genérico consomem o mesmo daemon. O 
 ## Como começa na prática
 
 ```bash
-pip install -e .          # ou do PyPI: atlas-memory
+pip install -e .          # ou do PyPI: atlas-code-memory
 cd ~/code/meu-app
 atlas init --global-rule
 atlas onboard

@@ -3,7 +3,7 @@ requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
 [project]
-name = "atlas-memory"
+name = "atlas-code-memory"
 version = "0.4.0"
 description = "Atlas — memory router for AI coding agents (Cursor and friends)"
 readme = "README.md"
