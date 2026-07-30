@@ -2,11 +2,7 @@
 
 ## GitHub
 
-```bash
-cd /path/to/atlas-memory
-gh repo create atlas-memory --public --source=. --remote=origin --push
-gh release create v0.2.0 -t v0.2.0 --generate-notes
-```
+The repository is [`Ygonet1986/atlas-code-memory`](https://github.com/Ygonet1986/atlas-code-memory).
 
 ## PyPI
 
@@ -24,7 +20,8 @@ twine upload dist/*   # requires a PyPI token
 GitHub Actions workflow `.github/workflows/publish.yml` runs on version tags `v*` and
 authenticates with [Trusted Publishing](https://docs.pypi.org/trusted-publishers), so
 there is no PyPI token stored anywhere. The publisher is registered on pypi.org for
-owner `Ygonet1986`, repository `atlas-memory`, workflow `publish.yml`.
+owner `Ygonet1986`, repository `atlas-code-memory`, workflow `publish.yml`, with the
+environment field left empty.
 
 The workflow refuses to run when the tag disagrees with the version in
 `pyproject.toml`, which is what makes `skip-existing` safe: a re-run cannot silently

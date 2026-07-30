@@ -11,8 +11,8 @@ atlas --version
 Or from source:
 
 ```bash
-git clone https://github.com/Ygonet1986/atlas-memory.git
-cd atlas-memory
+git clone https://github.com/Ygonet1986/atlas-code-memory.git
+cd atlas-code-memory
 pip install -e .
 ```
 

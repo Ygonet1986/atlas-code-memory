@@ -1,6 +1,6 @@
 # Atlas Memory
 
-[![CI](https://img.shields.io/github/actions/workflow/status/Ygonet1986/atlas-memory/ci.yml?label=CI)](https://github.com/Ygonet1986/atlas-memory/actions)
+[![CI](https://img.shields.io/github/actions/workflow/status/Ygonet1986/atlas-code-memory/ci.yml?label=CI)](https://github.com/Ygonet1986/atlas-code-memory/actions)
 [![PyPI](https://img.shields.io/pypi/v/atlas-code-memory?label=PyPI)](https://pypi.org/project/atlas-code-memory/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -91,8 +91,8 @@ atlas doctor
 From source instead:
 
 ```bash
-git clone https://github.com/Ygonet1986/atlas-memory.git
-cd atlas-memory
+git clone https://github.com/Ygonet1986/atlas-code-memory.git
+cd atlas-code-memory
 pip install -e .
 ```
 

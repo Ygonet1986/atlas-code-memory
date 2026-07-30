@@ -206,7 +206,7 @@ def cmd_bench(args: argparse.Namespace) -> int:
             if checkout is None:
                 print(
                     "FAIL --real needs the Atlas source checkout "
-                    "(git clone https://github.com/Ygonet1986/atlas-memory), "
+                    "(git clone https://github.com/Ygonet1986/atlas-code-memory), "
                     "or pass -C with your own project and --cases"
                 )
                 return 1

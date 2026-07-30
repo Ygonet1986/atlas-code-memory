@@ -36,7 +36,7 @@ atlas migrate --hooks            # install git post-commit stale hook
 
 ```bash
 # Install Atlas once
-pip install -e /path/to/atlas-memory   # or: pip install atlas-code-memory
+pip install -e /path/to/atlas-code-memory   # or: pip install atlas-code-memory
 
 cd ~/code/your-existing-app
 atlas migrate -C .
